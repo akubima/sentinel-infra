@@ -1,61 +1,3 @@
----
-# ==========================================
-# 1. ConfigMap for mosquitto.conf
-# ==========================================
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mosquitto-config
-  namespace: default
-data:
-  mosquitto.conf: |
-    per_listener_settings true
-
-    # LISTENER 1: Devices (Port 8883) - Two-Way TLS (mTLS)
-    listener 8883
-    cafile /mosquitto/config/certs/ca.crt
-    certfile /mosquitto/config/certs/server.crt
-    keyfile /mosquitto/config/certs/server.key
-    require_certificate true
-    use_identity_as_username true
-
-    # LISTENER 2: Grafana Monitoring (Port 8884) - One-Way TLS + Password
-    listener 8884
-    cafile /mosquitto/config/certs/ca.crt
-    certfile /mosquitto/config/certs/server.crt
-    keyfile /mosquitto/config/certs/server.key
-    require_certificate false
-    allow_anonymous false
-    password_file /mosquitto/config/passwd
-
----
-# ==========================================
-# 2. Service to expose the ports
-# ==========================================
-apiVersion: v1
-kind: Service
-metadata:
-  name: mosquitto-service
-  namespace: default
-spec:
-  # Use LoadBalancer if connecting external devices, otherwise use ClusterIP
-  type: LoadBalancer
-  selector:
-    app: mosquitto
-  ports:
-    - name: mtls-devices
-      protocol: TCP
-      port: 8883
-      targetPort: 8883
-    - name: tls-grafana
-      protocol: TCP
-      port: 8884
-      targetPort: 8884
-
----
-# ==========================================
-# 3. Deployment to run the pods
-# ==========================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,6 +7,10 @@ metadata:
     app: mosquitto
 spec:
   replicas: 1
+  # Strategy type Recreate is safer for ReadWriteOnce PVCs 
+  # to avoid two pods fighting for the same volume during updates.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mosquitto
@@ -73,31 +19,37 @@ spec:
       labels:
         app: mosquitto
     spec:
+      securityContext:
+        fsGroup: 1883 # Grants the mosquitto container user write access to the PVC
       containers:
         - name: mosquitto
-          # We can use the base image directly since we inject configs via K8s!
           image: eclipse-mosquitto:2.0
           ports:
             - containerPort: 8883
             - containerPort: 8884
           volumeMounts:
-            - name: config-volume
+            - name: mosquitto-config-volume
               mountPath: /mosquitto/config/mosquitto.conf
               subPath: mosquitto.conf
-            - name: certs-volume
+            - name: mosquitto-certs-volume
               mountPath: /mosquitto/config/certs
               readOnly: true
-            - name: passwd-volume
+            - name: mosquitto-passwd-volume
               mountPath: /mosquitto/config/passwd
               subPath: passwd
               readOnly: true
+            - name: mosquitto-data-volume
+              mountPath: /mosquitto/data
       volumes:
-        - name: config-volume
+        - name: mosquitto-config-volume
           configMap:
             name: mosquitto-config
-        - name: certs-volume
+        - name: mosquitto-certs-volume
           secret:
             secretName: mosquitto-certs
-        - name: passwd-volume
+        - name: mosquitto-passwd-volume
           secret:
             secretName: mosquitto-passwd
+        - name: mosquitto-data-volume
+          persistentVolumeClaim:
+            claimName: mosquitto-data-pvc
