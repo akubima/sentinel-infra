@@ -1,0 +1,84 @@
+# Kubernetes and Docker Deployment secure .gitignore
+
+# -----------------------------------------------------------------------------
+# Secrets and Credentials
+# -----------------------------------------------------------------------------
+# Ignore all files containing 'secret' in their name
+*.secret.yaml
+*.secret.yml
+*secret*.json
+*secret*.txt
+
+# Passwords, keys, and certificates
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.cer
+*.jks
+*.p8
+*.pub
+*id_rsa*
+*.ssh/
+
+# Kubeconfig files (which contain credentials)
+kubeconfig
+*.kubeconfig
+.kube/
+
+# -----------------------------------------------------------------------------
+# Environment Variables
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+
+# -----------------------------------------------------------------------------
+# Local Configurations and Overrides
+# -----------------------------------------------------------------------------
+# Ignore local overrides that shouldn't be shared
+*.local.yaml
+*.local.yml
+*.override.yaml
+*.override.yml
+
+# -----------------------------------------------------------------------------
+# Helm and Templating
+# -----------------------------------------------------------------------------
+# Ignore packed helm charts
+*.tgz
+charts/
+# Ignore rendered templates if generated locally
+rendered/
+manifests-rendered/
+
+# -----------------------------------------------------------------------------
+# Terraform (in case you use it for infrastructure)
+# -----------------------------------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# -----------------------------------------------------------------------------
+# IDEs and Editors
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# -----------------------------------------------------------------------------
+# OS Generated Files
+# -----------------------------------------------------------------------------
+Thumbs.db
