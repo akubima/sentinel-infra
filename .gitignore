@@ -6,6 +6,8 @@
 # Ignore all files containing 'secret' in their name
 *.secret.yaml
 *.secret.yml
+*secret*.yml
+*secret*.yaml
 *secret*.json
 *secret*.txt
 
