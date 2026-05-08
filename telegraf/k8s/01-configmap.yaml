@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf-config
+  namespace: sentinel-stack
+data:
+  telegraf.conf: |
+    [[inputs.mqtt_consumer]]
+    servers = ["ssl://mosquitto-service:8883"]
+    topics = ["setinel/device"]
+    data_format = "json_v2"
+  
+    tls_ca = "/etc/telegraf/certs/ca.crt"
+    tls_cert = "/etc/telegraf/certs/telegraf.crt"
+    tls_key = "/etc/telegraf/certs/telegraf.key"
+    insecure_skip_verify = false
+
+      [[inputs.mqtt_consumer.json_v2]]
+        [[inputs.mqtt_consumer.json_v2.object]]
+          path = "@this"
+          tags = ["device_id"]
+          disable_prepend_keys = false
+
+    [[outputs.influxdb_v2]]
+      urls = ["http://influxdb:8086"]
+      token = "$INFLUX_TOKEN"
+      organization = "$INFLUX_ORG"
+      bucket = "$INFLUX_BUCKET"
