@@ -4,6 +4,7 @@ metadata:
   labels:
     app: grafana
   name: grafana
+  namespace: sentinel-stack
 spec:
   selector:
     matchLabels:
@@ -49,8 +50,8 @@ spec:
               memory: 750Mi
           volumeMounts:
             - mountPath: /var/lib/grafana
-              name: grafana-pv
+              name: grafana-storage
       volumes:
-        - name: grafana-pv
+        - name: grafana-storage
           persistentVolumeClaim:
             claimName: grafana-pvc

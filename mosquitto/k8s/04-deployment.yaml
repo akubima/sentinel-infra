@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mosquitto
-  namespace: default
+  namespace: sentinel-stack
   labels:
     app: mosquitto
 spec:
@@ -28,28 +28,21 @@ spec:
             - containerPort: 8883
             - containerPort: 8884
           volumeMounts:
-            - name: mosquitto-config-volume
+            - name: mosquitto-config-storage
               mountPath: /mosquitto/config/mosquitto.conf
               subPath: mosquitto.conf
-            - name: mosquitto-certs-volume
+            - name: mosquitto-certs-storage
               mountPath: /mosquitto/config/certs
               readOnly: true
-            - name: mosquitto-passwd-volume
-              mountPath: /mosquitto/config/passwd
-              subPath: passwd
-              readOnly: true
-            - name: mosquitto-data-volume
+            - name: mosquitto-data-storage
               mountPath: /mosquitto/data
       volumes:
-        - name: mosquitto-config-volume
+        - name: mosquitto-config-storage
           configMap:
             name: mosquitto-config
-        - name: mosquitto-certs-volume
+        - name: mosquitto-certs-storage
           secret:
             secretName: mosquitto-certs
-        - name: mosquitto-passwd-volume
-          secret:
-            secretName: mosquitto-passwd
-        - name: mosquitto-data-volume
+        - name: mosquitto-data-storage
           persistentVolumeClaim:
             claimName: mosquitto-data-pvc

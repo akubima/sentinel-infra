@@ -7,7 +7,7 @@ data:
   telegraf.conf: |
     [[inputs.mqtt_consumer]]
     servers = ["ssl://mosquitto-service:8883"]
-    topics = ["setinel/device"]
+    topics = ["sentinel/device"]
     data_format = "json_v2"
   
     tls_ca = "/etc/telegraf/certs/ca.crt"
@@ -22,7 +22,7 @@ data:
           disable_prepend_keys = false
 
     [[outputs.influxdb_v2]]
-      urls = ["http://influxdb:8086"]
+      urls = ["http://influxdb-service:8086"]
       token = "$INFLUX_TOKEN"
       organization = "$INFLUX_ORG"
       bucket = "$INFLUX_BUCKET"
