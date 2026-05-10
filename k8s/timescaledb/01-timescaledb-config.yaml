@@ -59,4 +59,4 @@ data:
         metrics JSONB       NOT NULL
     );
     SELECT create_hypertable('device_telemetry', 'time');
-    CREATE INDEX idx_node_id_time ON sensor_data(node_id, time DESC);
+    CREATE INDEX idx_node_id_time ON device_telemetry(node_id, time DESC);
