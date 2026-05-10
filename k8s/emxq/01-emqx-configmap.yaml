@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: emqx-config
+  namespace: sentinel-stack
+data:
+  emqx.conf: |
+    listeners.ssl.default {
+      bind = "0.0.0.0:8883"
+      ssl_options {
+        cacertfile = "/opt/emqx/etc/certs/ca.pem"
+        certfile = "/opt/emqx/etc/certs/server.pem"
+        keyfile = "/opt/emqx/etc/certs/server.key"
+        verify = verify_peer
+        fail_if_no_peer_cert = true
+      }
+    }
+    # Optional: Enable the Dashboard for management
+    dashboard {
+      listeners.http {
+        bind = 18083
+      }
+    }
