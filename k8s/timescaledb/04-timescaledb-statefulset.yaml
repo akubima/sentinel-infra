@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: sentinel-stack
+spec:
+  serviceName: "timescaledb-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      containers:
+        - name: timescaledb
+          image: timescale/timescaledb:latest-pg16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: timescaledb-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: password
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: timescaledb-data-storage
+              mountPath: /var/lib/postgresql/data
+            - name: timescaledb-init-script-storage
+              mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+        - name: timescaledb-data-storage
+          persistentVolumeClaim:
+            claimName: timescaledb-data-pvc
+        - name: timescaledb-init-script-storage
+          configMap:
+            name: timescaledb-init-script-config

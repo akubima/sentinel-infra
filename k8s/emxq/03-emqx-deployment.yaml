@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx
+  namespace: sentinel-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emqx
+  template:
+    metadata:
+      labels:
+        app: emqx
+    spec:
+      containers:
+        - name: emqx
+          image: emqx/emqx-enterprise:latest
+          ports:
+            - containerPort: 8883
+            - containerPort: 18083
+          env:
+            - name: EMQX_LISTENERS__SSL__DEFAULT__BIND
+              value: "0.0.0.0:8883"
+            - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE
+              value: "/opt/emqx/etc/certs/ca.crt"
+            - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE
+              value: "/opt/emqx/etc/certs/emqx.crt"
+            - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE
+              value: "/opt/emqx/etc/certs/emqx.key"
+            - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY
+              value: "verify_peer"
+            - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT
+              value: "true"
+            - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CACERTFILE
+              value: "/opt/emqx/etc/certs/ca.crt"
+            - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CERTFILE
+              value: "/opt/emqx/etc/certs/emqx.crt"
+            - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__KEYFILE
+              value: "/opt/emqx/etc/certs/emqx.key"
+            - name: EMQX_DASHBOARD__LISTENERS__HTTP__BIND
+              value: "18083"
+          livenessProbe:
+            tcpSocket:
+              port: 18083
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 18083
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: emqx-data-storage
+              mountPath: /opt/emqx/data
+            - name: emqx-certs-storage
+              mountPath: /opt/emqx/etc/certs
+              readOnly: true
+      volumes:
+        - name: emqx-data-storage
+          persistentVolumeClaim:
+            claimName: emqx-data-pvc
+        - name: emqx-certs-storage
+          secret:
+            secretName: emqx-certs-secret
