@@ -23,21 +23,21 @@ spec:
             - name: EMQX_LISTENERS__SSL__DEFAULT__BIND
               value: "0.0.0.0:8883"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE
-              value: "/opt/emqx/etc/certs/ca.crt"
+              value: "/opt/emqx/etc/certs/cacert.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE
-              value: "/opt/emqx/etc/certs/emqx.crt"
+              value: "/opt/emqx/etc/certs/cert.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE
-              value: "/opt/emqx/etc/certs/emqx.key"
+              value: "/opt/emqx/etc/certs/key.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY
               value: "verify_peer"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT
               value: "true"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CACERTFILE
-              value: "/opt/emqx/etc/certs/ca.crt"
+              value: "/opt/emqx/etc/certs/cacert.pem"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CERTFILE
-              value: "/opt/emqx/etc/certs/emqx.crt"
+              value: "/opt/emqx/etc/certs/cert.pem"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__KEYFILE
-              value: "/opt/emqx/etc/certs/emqx.key"
+              value: "/opt/emqx/etc/certs/key.pem"
             - name: EMQX_DASHBOARD__LISTENERS__HTTP__BIND
               value: "18083"
           livenessProbe:
@@ -65,3 +65,17 @@ spec:
         - name: emqx-certs-storage
           secret:
             secretName: emqx-certs-secret
+            items:
+              - key: ca.crt
+                path: cacert.pem
+              - key: emqx.crt
+                path: cert.pem
+              - key: emqx.key
+                path: key.pem
+              # Kept for backward compatibility with existing env vars if needed
+              - key: ca.crt
+                path: ca.crt
+              - key: emqx.crt
+                path: emqx.crt
+              - key: emqx.key
+                path: emqx.key
