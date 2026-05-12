@@ -13,4 +13,4 @@ spec:
     - name: dashboard
       port: 18083
       targetPort: 18083
-  type: LoadBalancer
+  type: ClusterIP

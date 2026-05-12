@@ -14,6 +14,20 @@ kubectl apply -f k8s/00-namespace.yaml
 ```
 *(Alternatively, you can run `kubectl create namespace sentinel-stack`)*
 
+### Storage Provisioner (Bare-Metal / kubeadm only)
+
+If you are deploying this to a bare-metal `kubeadm` cluster (as opposed to a managed service or Minikube), you need a dynamic storage provisioner installed so that `PersistentVolumeClaims` can automatically create `PersistentVolumes`.
+
+Install Rancher's **Local Path Provisioner** to provide dynamic provisioning using the node's local disk:
+
+```sh
+# Install Local Path Provisioner
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.28/deploy/local-path-storage.yaml
+
+# Set it as the default storage class
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
 ### 1. Configure Certificates and Secrets
 
 Before deploying EMQX and TimescaleDB, you must generate the necessary TLS certificates and create Kubernetes secrets for them.
