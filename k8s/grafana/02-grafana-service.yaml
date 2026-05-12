@@ -12,3 +12,5 @@ spec:
     app: grafana
   sessionAffinity: None
   type: ClusterIP
+  externalIPs:
+    - 10.33.102.168
