@@ -40,16 +40,22 @@ spec:
               value: "/opt/emqx/etc/certs/key.pem"
             - name: EMQX_DASHBOARD__LISTENERS__HTTP__BIND
               value: "18083"
-          livenessProbe:
+          startupProbe:
             tcpSocket:
               port: 18083
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket:
+              port: 18083
+            initialDelaySeconds: 0
+            periodSeconds: 15
             failureThreshold: 3
           readinessProbe:
             tcpSocket:
               port: 18083
-            initialDelaySeconds: 10
+            initialDelaySeconds: 0
             periodSeconds: 10
             failureThreshold: 3
           volumeMounts:
