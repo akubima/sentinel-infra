@@ -66,16 +66,9 @@ spec:
           secret:
             secretName: emqx-certs-secret
             items:
-              - key: ca.crt
+              - key: ca.pem
                 path: cacert.pem
-              - key: emqx.crt
+              - key: emqx.pem
                 path: cert.pem
               - key: emqx.key
                 path: key.pem
-              # Kept for backward compatibility with existing env vars if needed
-              - key: ca.crt
-                path: ca.crt
-              - key: emqx.crt
-                path: emqx.crt
-              - key: emqx.key
-                path: emqx.key

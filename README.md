@@ -34,7 +34,7 @@ Before deploying EMQX and TimescaleDB, you must generate the necessary TLS certi
 
 #### EMQX Certificate Generation Requirements
 
-Generate the certificates and place them in the `./emqx/certs/` directory. Ensure the file names match exactly what the configurations expect (`ca.crt`, `emqx.crt`, `emqx.key`).
+Generate the certificates and place them in the `./emqx/certs/` directory. Ensure the file names match exactly what the configurations expect (`ca.pem`, `emqx.pem`, `emqx.key`).
 
 - **EMQX Certificate Details:**
   - **CN (Common Name):** `emqx-service.sentinel-stack.svc.cluster.local`
@@ -49,7 +49,7 @@ Run the following commands to create the secrets for both TimescaleDB and EMQX. 
 kubectl create secret generic timescaledb-secret --from-literal=password='<change_this_password>' -n sentinel-stack
 
 # Create EMQX certificates secret
-kubectl create secret generic emqx-certs-secret --from-file=ca.crt=./emqx/certs/ca.crt --from-file=emqx.crt=./emqx/certs/emqx.crt --from-file=emqx.key=./emqx/certs/emqx.key -n sentinel-stack
+kubectl create secret generic emqx-certs-secret --from-file=ca.pem=./emqx/certs/ca.pem --from-file=emqx.pem=./emqx/certs/emqx.pem --from-file=emqx.key=./emqx/certs/emqx.key -n sentinel-stack
 ```
 
 ### 2. Deploy the Components
