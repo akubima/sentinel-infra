@@ -33,19 +33,21 @@ spec:
               command:
                 - pg_isready
                 - -U
-                - postgres
+                - sentinel
             initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 3
+            failureThreshold: 6
+            timeoutSeconds: 5
           readinessProbe:
             exec:
               command:
                 - pg_isready
                 - -U
-                - postgres
+                - sentinel
             initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 3
+            failureThreshold: 6
+            timeoutSeconds: 5
           volumeMounts:
             - name: timescaledb-data-storage
               mountPath: /var/lib/postgresql/data
