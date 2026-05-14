@@ -40,7 +40,6 @@ data:
     
     CREATE TABLE devices (
         id VARCHAR(26) PRIMARY KEY DEFAULT generate_ulid(),
-        node_id VARCHAR(20) UNIQUE NOT NULL,
         name VARCHAR(30),
         location VARCHAR(120),
         latitude DECIMAL(9,6),
@@ -49,14 +48,14 @@ data:
         updated_at TIMESTAMP NULL DEFAULT NULL
     );
     
-    INSERT INTO devices (node_id, name, location, latitude, longitude)
-    VALUES ('CE2BF215788', 'Prototype Node', 'Department TEDI', -7.775418, 110.374250);
+    INSERT INTO devices (name, location, latitude, longitude)
+    VALUES ('Prototype Node', 'Department TEDI', -7.775418, 110.374250);
     
     CREATE TABLE device_telemetry
     (
         time    TIMESTAMPTZ NOT NULL,
-        node_id VARCHAR(26) NOT NULL,
+        id      VARCHAR(26) NOT NULL,
         metrics JSONB       NOT NULL
     );
     SELECT create_hypertable('device_telemetry', 'time');
-    CREATE INDEX idx_node_id_time ON device_telemetry(node_id, time DESC);
+    CREATE INDEX idx_id_time ON device_telemetry(id, time DESC);
