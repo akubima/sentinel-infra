@@ -22,6 +22,20 @@ spec:
         - name: grafana
           image: grafana/grafana:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_DATABASE_TYPE
+              value: postgres
+            - name: GF_DATABASE_HOST
+              value: timescaledb-service:5432
+            - name: GF_DATABASE_NAME
+              value: grafana
+            - name: GF_DATABASE_USER
+              value: sentinel
+            - name: GF_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: password
           ports:
             - containerPort: 3000
               name: http-grafana

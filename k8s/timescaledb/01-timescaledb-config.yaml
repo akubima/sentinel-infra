@@ -37,6 +37,8 @@ data:
       RETURN res;
     END;
     $$ LANGUAGE plpgsql VOLATILE;
+
+    CREATE DATABASE grafana OWNER sentinel;
     
     CREATE TABLE devices (
         id VARCHAR(26) PRIMARY KEY DEFAULT generate_ulid(),
