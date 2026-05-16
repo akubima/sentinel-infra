@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: sentinel-infra
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: timescaledb-service.sentinel-infra.svc.cluster.local
+        type: ${GF_DATABASE_TYPE}
+        access: proxy
+        url: timescaledb-service.sentinel-infra.svc.cluster.local:5432
+        user: ${GF_DATABASE_USER}
+        database: sentinel
+        isDefault: true
+        jsonData:
+          sslmode: "disable"
+          postgresVersion: 15.00
+          timescaledb: true
+          timeInterval: "1s"
+        secureJsonData:
+          password: ${GF_DATABASE_PASSWORD}
+        editable: true

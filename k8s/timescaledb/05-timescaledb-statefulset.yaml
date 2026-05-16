@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: timescaledb
-  namespace: sentinel-stack
+  namespace: sentinel-infra
 spec:
-  serviceName: "timescaledb-service"
+  serviceName: timescaledb-service
   replicas: 1
   selector:
     matchLabels:
@@ -16,33 +16,34 @@ spec:
     spec:
       containers:
         - name: timescaledb
-          image: timescale/timescaledb:latest-pg16
+          image: timescale/timescaledb:2.15.3-pg16
           ports:
             - containerPort: 5432
           envFrom:
-            - configMapRef:
-                name: timescaledb-config
-          env:
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: timescaledb-secret
-                  key: password
+            - secretRef:
+                name: timescaledb-secret
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
           livenessProbe:
             exec:
               command:
-                - pg_isready
-                - -U
-                - postgres
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER"
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             exec:
               command:
-                - pg_isready
-                - -U
-                - postgres
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER"
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3

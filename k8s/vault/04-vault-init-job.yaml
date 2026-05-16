@@ -1,0 +1,112 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-init-job-role
+  namespace: vault
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-init-job-rb
+subjects:
+  - kind: ServiceAccount
+    name: vault-init-job-sa
+    namespace: vault
+roleRef:
+  kind: ClusterRole
+  name: vault-init-job-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-init-job-sa
+  namespace: vault
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init-job
+  namespace: vault
+spec:
+  template:
+    spec:
+      serviceAccountName: vault-init-job-sa
+      restartPolicy: OnFailure
+      containers:
+        - name: init-operator
+          image: alpine/k8s:1.34.3
+          env:
+            - name: VAULT_ADDR
+              value: "http://127.0.0.1:8200"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              
+              echo "Menunggu semua pod Vault dengan label app=vault siap..."
+              kubectl wait --namespace=vault --for=condition=Ready pod -l app=vault --timeout=300s
+              
+              # Cek apakah vault-0 sudah di-init sebelumnya
+              INIT_STATUS=$(kubectl exec -n vault vault-0 -- vault status -address=$VAULT_ADDR -format=json 2>/dev/null | jq -r '.initialized' || echo "false")              
+              
+              if [ "$INIT_STATUS" = "false" ] || [ "$INIT_STATUS" = "" ]; then
+                echo "Vault belum di-init. Memulai proses inisialisasi awal..."
+              
+                # 1. Jalankan Init di vault-0
+                INIT_OUT=$(kubectl exec -n vault vault-0 -- vault operator init -address=$VAULT_ADDR -key-shares=5 -key-threshold=3 -format=json)
+              
+                # 2. Ekstrak Token dan Keys
+                ROOT_TOKEN=$(echo $INIT_OUT | jq -r '.root_token')
+                UNSEAL_KEYS=$(echo $INIT_OUT | jq -r '.unseal_keys_b64 | join(",")')
+              
+                # 3. Simpan ke K8s Secret (timpa jika sudah ada)
+                kubectl delete secret vault-secret -n vault --ignore-not-found
+                kubectl create secret generic vault-secret -n vault \
+                  --from-literal=root-token="$ROOT_TOKEN" \
+                  --from-literal=unseal-keys="$UNSEAL_KEYS"
+                echo "Secret 'vault-secret' berhasil dibuat."
+              else
+                echo "Vault sudah ter-inisialisasi sebelumnya. Mengambil kunci dari Secret..."
+              fi
+              
+              # 4. Ambil Unseal Keys dari Secret untuk proses Unseal & Join
+              KEYS=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.unseal-keys}' | base64 -d)
+              KEY1=$(echo $KEYS | cut -d',' -f1)
+              KEY2=$(echo $KEYS | cut -d',' -f2)
+              KEY3=$(echo $KEYS | cut -d',' -f3)
+              
+              echo "Mendeteksi jumlah replika Vault..."
+              REPLICAS=$(kubectl get statefulset vault -n vault -o jsonpath='{.spec.replicas}')
+              
+              # Loop untuk memproses setiap pod Vault (vault-0, vault-1, dst.)
+              for i in $(seq 0 $((REPLICAS - 1))); do
+                echo "------------------------------------------------"
+              
+                # Jika bukan pod pertama (vault-0), lakukan Raft Join dulu
+                if [ $i -gt 0 ]; then
+                  echo "Menggabungkan vault-$i ke Raft cluster..."
+                  kubectl exec -n vault vault-$i -- vault operator raft join -address=$VAULT_ADDR http://vault-service.vault.svc.cluster.local:8200 || true
+                fi
+              
+                # Menggunakan sh -c untuk menyuapi kunci unseal secara mutlak ke dalam Pod
+                echo "Melakukan Unseal pada vault-$i..."
+                kubectl exec -n vault vault-$i -- sh -c "vault operator unseal -address=$VAULT_ADDR $KEY1"
+                kubectl exec -n vault vault-$i -- sh -c "vault operator unseal -address=$VAULT_ADDR $KEY2"
+                kubectl exec -n vault vault-$i -- sh -c "vault operator unseal -address=$VAULT_ADDR $KEY3"
+              done
+              
+              echo "=== SEMUA VAULT NODE BERHASIL HA & UNSEALED ==="

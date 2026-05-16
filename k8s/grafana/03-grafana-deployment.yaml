@@ -1,11 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: grafana
   name: grafana
-  namespace: sentinel-stack
+  namespace: sentinel-infra
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: grafana
@@ -20,22 +19,25 @@ spec:
           - 0
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:13.0.1
           imagePullPolicy: IfNotPresent
           env:
             - name: GF_DATABASE_TYPE
               value: postgres
             - name: GF_DATABASE_HOST
-              value: timescaledb-service:5432
+              value: timescaledb-service.sentinel-infra.svc.cluster.local:5432
             - name: GF_DATABASE_NAME
               value: grafana
             - name: GF_DATABASE_USER
-              value: sentinel
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
             - name: GF_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: timescaledb-secret
-                  key: password
+                  key: POSTGRES_PASSWORD
           ports:
             - containerPort: 3000
               name: http-grafana
@@ -62,10 +64,14 @@ spec:
             requests:
               cpu: 250m
               memory: 750Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
           volumeMounts:
-            - mountPath: /var/lib/grafana
-              name: grafana-storage
+            - name: grafana-config
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
       volumes:
-        - name: grafana-storage
-          persistentVolumeClaim:
-            claimName: grafana-pvc
+        - name: grafana-config
+          configMap:
+            name: grafana-config

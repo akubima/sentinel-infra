@@ -12,7 +12,29 @@ spec:
     metadata:
       labels:
         app: emqx
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "emqx-role"
+        vault.hashicorp.com/agent-service-mesh-init: "true"
+
+        vault.hashicorp.com/agent-inject-command-cert.pem: "kill -HUP 1"
+        vault.hashicorp.com/agent-inject-secret-ca.pem: "sentinel/issue/infrastructure"
+        vault.hashicorp.com/agent-inject-template-ca.pem: |
+          {{- with secret "sentinel/issue/infrastructure" "common_name=emqx-service.sentinel-stack.svc.cluster.local" "ttl=365d" -}}
+          {{ .Data.issuing_ca }}
+          {{- end -}}
+        vault.hashicorp.com/agent-inject-secret-cert.pem: "sentinel/issue/infrastructure"
+        vault.hashicorp.com/agent-inject-template-cert.pem: |
+          {{- with secret "sentinel/issue/infrastructure" "common_name=emqx-service.sentinel-stack.svc.cluster.local" "ttl=365d" -}}
+          {{ .Data.certificate }}
+          {{- end -}}
+        vault.hashicorp.com/agent-inject-secret-key.pem: "sentinel/issue/infrastructure"
+        vault.hashicorp.com/agent-inject-template-key.pem: |
+          {{- with secret "sentinel/issue/infrastructure" "common_name=emqx-service.sentinel-stack.svc.cluster.local" "ttl=365d" -}}
+          {{ .Data.private_key }}
+          {{- end -}}
     spec:
+      serviceAccountName: emqx-sa
       containers:
         - name: emqx
           image: emqx/emqx-enterprise:latest
@@ -23,21 +45,21 @@ spec:
             - name: EMQX_LISTENERS__SSL__DEFAULT__BIND
               value: "0.0.0.0:8883"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE
-              value: "/opt/emqx/etc/certs/cacert.pem"
+              value: "/vault/secrets/ca.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE
-              value: "/opt/emqx/etc/certs/cert.pem"
+              value: "/vault/secrets/cert.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE
-              value: "/opt/emqx/etc/certs/key.pem"
+              value: "/vault/secrets/key.pem"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY
               value: "verify_peer"
             - name: EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT
               value: "true"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CACERTFILE
-              value: "/opt/emqx/etc/certs/cacert.pem"
+              value: "/vault/secrets/ca.pem"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CERTFILE
-              value: "/opt/emqx/etc/certs/cert.pem"
+              value: "/vault/secrets/cert.pem"
             - name: EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__KEYFILE
-              value: "/opt/emqx/etc/certs/key.pem"
+              value: "/vault/secrets/key.pem"
             - name: EMQX_DASHBOARD__LISTENERS__HTTP__BIND
               value: "18083"
           livenessProbe:
@@ -55,20 +77,7 @@ spec:
           volumeMounts:
             - name: emqx-data-storage
               mountPath: /opt/emqx/data
-            - name: emqx-certs-storage
-              mountPath: /opt/emqx/etc/certs
-              readOnly: true
       volumes:
         - name: emqx-data-storage
           persistentVolumeClaim:
             claimName: emqx-data-pvc
-        - name: emqx-certs-storage
-          secret:
-            secretName: emqx-certs-secret
-            items:
-              - key: ca.pem
-                path: cacert.pem
-              - key: emqx.pem
-                path: cert.pem
-              - key: emqx.key
-                path: key.pem

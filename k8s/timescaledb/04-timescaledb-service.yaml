@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: timescaledb-service
-  namespace: sentinel-stack
+  namespace: sentinel-infra
 spec:
   selector:
     app: timescaledb
