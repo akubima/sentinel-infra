@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: emqx-data-pvc
-  namespace: sentinel-stack
+  namespace: sentinel-infra
 spec:
   accessModes:
     - ReadWriteOnce

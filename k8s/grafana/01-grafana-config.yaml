@@ -12,7 +12,7 @@ data:
         access: proxy
         url: timescaledb-service.sentinel-infra.svc.cluster.local:5432
         user: ${GF_DATABASE_USER}
-        database: sentinel
+        database: "sentinel"
         isDefault: true
         jsonData:
           sslmode: "disable"

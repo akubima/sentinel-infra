@@ -1,5 +1,0 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: provisioning-sa
-  namespace: sentinel-stack

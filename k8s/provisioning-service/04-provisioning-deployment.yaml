@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisioning
+  namespace: sentinel-infra
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: provisioning
+  template:
+    metadata:
+      labels:
+        app: provisioning
+    spec:
+      serviceAccountName: provisioning-service-sa
+      containers:
+        - name: provisioning
+          image: provisioning-service:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: PORT
+              value: "3001"
+            - name: VAULT_ADDR
+              value: "http://vault-service.vault.svc.cluster.local:8200"
+            - name: PGHOST
+              value: "timescaledb-service.sentinel-infra.svc.cluster.local"
+            - name: PGDATABASE
+              value: "sentinel"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_PASSWORD
+            - name: SSL_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: provisioning-secret
+                  key: tls.crt
+            - name: SSL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: provisioning-secret
+                  key: tls.key
+            - name: BOOTSTRAP_CA_DATA
+              valueFrom:
+                secretKeyRef:
+                  name: provisioning-secret
+                  key: ca.crt

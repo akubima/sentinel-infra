@@ -10,7 +10,7 @@ spec:
       targetPort: http-grafana
   selector:
     app: grafana
-  sessionAffinity: None
+  sessionAffinity: ClientIP
   type: LoadBalancer
   # type: ClusterIP
   # externalIPs:
