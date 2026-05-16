@@ -1,3 +1,13 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: emqx-sa-token
+  namespace: sentinel-infra
+  annotations:
+    kubernetes.io/service-account.name: emqx-sa
+type: kubernetes.io/service-account-token
+
+---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -8,6 +18,9 @@ spec:
     server: http://vault-service.vault.svc.cluster.local:8200
     path: sentinel-pki/sign/emqx-role
     auth:
-      tokenSecretRef:
-        name: vault-secret
-        key: root-token
+      kubernetes:
+        mountPath: /v1/auth/kubernetes
+        role: emqx-role
+        secretRef:
+          name: emqx-sa-token
+          key: token
