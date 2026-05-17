@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-manager-vault-token-issuer
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-manager-vault-token-issuer-binding
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager # Sesuaikan dengan namespace tempat cert-manager lu tinggal
+roleRef:
+  kind: ClusterRole
+  name: cert-manager-vault-token-issuer
+  apiGroup: rbac.authorization.k8s.io
