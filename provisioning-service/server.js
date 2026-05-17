@@ -62,7 +62,7 @@ app.post('/provision', async (req, res) => {
         const vaultToken = await getVaultTokenViaLogin();
 
         const vaultRes = await axios.post(
-            `${VAULT_ADDR}/v1/sentinel-pki/issue/provisioning-service-role`,
+            `${VAULT_ADDR}/v1/sentinel-pki/issue/iot-node-prod`,
             { common_name: node_id, dns_sans: [logicalId], ttl: '8760h' },
             { headers: { 'X-Vault-Token': vaultToken } }
         );

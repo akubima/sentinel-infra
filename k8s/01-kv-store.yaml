@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kv-prod-sa
+  name: kv-sa
   namespace: sentinel-infra
 
 ---
 apiVersion: external-secrets.io/v1
 kind: SecretStore
 metadata:
-  name: kv-prod
+  name: kv
   namespace: sentinel-infra
 spec:
   provider:
@@ -19,6 +19,6 @@ spec:
       auth:
         kubernetes:
           mountPath: "kubernetes"
-          role: "kv-prod-role"
+          role: "kv-role"
           serviceAccountRef:
-            name: "kv-prod-sa"
+            name: "kv-sa"
