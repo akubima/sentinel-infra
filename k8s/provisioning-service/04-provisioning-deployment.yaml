@@ -48,18 +48,18 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: POSTGRES_PASSWORD
-            - name: SSL_CERT
-              valueFrom:
-                secretKeyRef:
-                  name: provisioning-secret
-                  key: tls.crt
-            - name: SSL_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: provisioning-secret
-                  key: tls.key
-            - name: BOOTSTRAP_CA_DATA
-              valueFrom:
-                secretKeyRef:
-                  name: provisioning-secret
-                  key: ca.crt
+          volumeMounts:
+            - name: certs-storage
+              mountPath: /etc/certs
+              readOnly: true
+      volumes:
+        - name: certs-storage
+          secret:
+            secretName: provisioning-secret
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt
