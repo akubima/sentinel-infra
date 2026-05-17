@@ -1,0 +1,199 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-watcher-role
+  namespace: vault
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-watcher-rb
+subjects:
+  - kind: ServiceAccount
+    name: vault-watcher-sa
+    namespace: vault
+roleRef:
+  kind: ClusterRole
+  name: vault-watcher-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-watcher-sa
+  namespace: vault
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-watcher
+  namespace: vault
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-watcher-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: watcher-operator
+              image: alpine/k8s:1.34.3
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  SECRET_EXISTS=$(kubectl get secret vault-secret -n vault --no-headers 2>/dev/null | awk '{print $1}')
+                  
+                  VAULT0_STATUS_JSON=$(kubectl exec -n vault vault-0 -- vault status -format=json 2>/dev/null)
+                  VAULT0_EXIT_CODE=$?
+                  
+                  if [ $VAULT0_EXIT_CODE -eq 0 ] || [ $VAULT0_EXIT_CODE -eq 2 ]; then
+                    VAULT0_INIT_STATUS=$(echo "$VAULT0_STATUS_JSON" | jq -r '.initialized' 2>/dev/null)
+                  else
+                    VAULT0_INIT_STATUS="UNKNOWN_ERROR"
+                    echo "Failed to get vault-0 status. Exit code: $VAULT0_EXIT_CODE"
+                  fi
+                  
+                  if [ "$VAULT0_INIT_STATUS" = "false" ]; then
+                  
+                    if [ -n "$SECRET_EXISTS" ]; then
+                      echo "Failed vault-0 report initialized: false, but vault-secret already exists."
+                      echo "Initialization stopped to protect the existing vault-secret."
+                      exit 1
+                    fi
+                  
+                    echo "vault-0 is not initialized yet. Initializing vault..."
+                  
+                    VAULT0_INIT_OUT=$(kubectl exec -n vault vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json 2>/dev/null)
+                  
+                    ROOT_TOKEN=$(echo "$VAULT0_INIT_OUT" | jq -r '.root_token' 2>/dev/null)
+                    UNSEAL_KEYS=$(echo "$VAULT0_INIT_OUT" | jq -r '.unseal_keys_b64 | join(",")' 2>/dev/null)
+                  
+                    if [ "$ROOT_TOKEN" != "null" ] && [ -n "$ROOT_TOKEN" ] && [ "$UNSEAL_KEYS" != "null" ] && [ -n "$UNSEAL_KEYS" ]; then
+                  
+                      kubectl delete secret vault-secret -n vault --ignore-not-found
+                  
+                      kubectl create secret generic vault-secret -n vault \
+                      --from-literal=root-token="$ROOT_TOKEN" \
+                      --from-literal=unseal-keys="$UNSEAL_KEYS"
+                      echo "Successfully initialized vault-0, vault-secret created."
+                    else
+                      echo "Failed to initialize vault-0."
+                    fi
+                  elif [ "$VAULT0_INIT_STATUS" = "true" ]; then
+                    echo "vault-0 is already initialized, continuing..."
+                  fi
+                  
+                  PODS=$(kubectl get pods -n vault -l app=vault --no-headers -o custom-columns=":metadata.name" | sort)
+                  KEYS=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.unseal-keys}' | base64 -d)
+                  KEY1=$(echo $KEYS | cut -d',' -f1)
+                  KEY2=$(echo $KEYS | cut -d',' -f2)
+                  KEY3=$(echo $KEYS | cut -d',' -f3)
+                  
+                  for POD_NAME in $PODS; do
+                    echo "=================================================="
+                    echo "Processing $POD_NAME..."
+                  
+                    # Wait for pod ready
+                    kubectl wait --for=jsonpath='{.status.phase}'=Running pod/$POD_NAME -n vault --timeout=30s || continue
+                  
+                    # Fetch status vault
+                    INIT=$(kubectl exec -n vault $POD_NAME -- vault status 2>/dev/null | grep "^Initialized" | awk '{print $2}')
+                    SEALED=$(kubectl exec -n vault $POD_NAME -- vault status 2>/dev/null | grep "^Sealed" | awk '{print $2}')
+                  
+                    echo "$POD_NAME -> Initialized: $INIT, Sealed: $SEALED"
+                  
+                    # Condition if pod is not initialized
+                    if [ "$INIT" = "false" ]; then
+                      echo "$POD_NAME has not been initialized yet. Trying to join raft through active nodes..."
+                      JOINED=false
+                  
+                      for PEER in $PODS; do
+                        if [ "$PEER" = "$POD_NAME" ]; then continue; fi
+                  
+                        echo "Trying to join raft through http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 ..."
+                        JOIN_RESULT=$(kubectl exec -n vault $POD_NAME -- vault operator raft join \
+                          http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 2>&1)
+                  
+                        if echo "$JOIN_RESULT" | grep -qi "successfully\|joined"; then
+                          echo "Successfully join raft through $PEER."
+                          JOINED=true
+                          break
+                        fi
+                      done
+                  
+                      if [ "$JOINED" = "false" ]; then
+                        echo "Failed to join raft for $POD_NAME."
+                        continue
+                      fi
+                      SEALED="true"
+                    fi
+                  
+                    # Condition if pod is sealed
+                    if [ "$SEALED" = "true" ]; then
+                      echo "Unsealing $POD_NAME..."
+                      kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY1 >/dev/null
+                      kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY2 >/dev/null
+                  
+                      # Catch error internal/raft
+                      UNSEAL_OUT=$(kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY3 2>&1)
+                  
+                      if echo "$UNSEAL_OUT" | grep -qi "error"; then
+                        echo "Failed to unseal $POD_NAME because of internal/raft error:"
+                        echo "$UNSEAL_OUT"
+                  
+                        # Auto recovery feature do not delete the vault-0 pod
+                        if [ "$POD_NAME" != "vault-0" ]; then
+                          echo "Performing recovery, deleting corrupted pod $POD_NAME..."
+                          kubectl exec -n vault $POD_NAME -- sh -c 'rm -rf /vault/file/*'
+                          kubectl delete pod $POD_NAME -n vault
+                        fi
+                        continue
+                      fi
+                      echo "$POD_NAME unsealed."
+                    else
+                      echo "$POD_NAME is active and unsealed."
+                    fi
+                  done
+                  
+                  echo "=================================================="
+                  echo "Checking for ghost peers in raft (stale peer)..."
+                  
+                  if [ -z "$ROOT_TOKEN" ] && [ -n "$SECRET_EXISTS" ]; then
+                    ROOT_TOKEN=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.root-token}' | base64 -d 2>/dev/null)
+                  fi
+                  
+                  # Get vault pods
+                  K8S_PODS=$(kubectl get pods -n vault -l app=vault --no-headers -o custom-columns=":metadata.name")
+
+                  # Jalankan ekstraksi data server secara streaming line-by-line lewat jq
+                  kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft list-peers -format=json" 2>/dev/null | jq -r '.data.config.servers[] | "\(.node_id) \(.address)"' 2>/dev/null | while read -r NODE_ID ADDRESS; do
+                      [ -z "$NODE_ID" ] && continue
+                      POD_NAME_FROM_RAFT=$(echo "$ADDRESS" | cut -d'.' -f1)
+                      if ! echo "$K8S_PODS" | grep -q "^$POD_NAME_FROM_RAFT$"; then
+                        echo "Detected ghost peer: $NODE_ID (pod has been deleted from k8s)."
+                        echo "Kicking ghost peer $NODE_ID from raft..."
+                  
+                        kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft remove-peer $NODE_ID"
+                      else
+                        echo "Pod $POD_NAME_FROM_RAFT (ID: $NODE_ID) is active."
+                      fi
+                  done
+
+                  echo "Ghost peers detection completed."

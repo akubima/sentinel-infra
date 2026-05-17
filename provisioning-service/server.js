@@ -9,6 +9,10 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const VAULT_ADDR = process.env.VAULT_ADDR || 'http://vault-service.vault.svc.cluster.local:8200';
 
+const bootstrapCa = process.env.BOOTSTRAP_CA_DATA ? process.env.BOOTSTRAP_CA_DATA.replace(/\\n/g, '\n') : null;
+const sslCert = process.env.SSL_CERT ? process.env.SSL_CERT.replace(/\\n/g, '\n') : null;
+const sslKey = process.env.SSL_KEY ? process.env.SSL_KEY.replace(/\\n/g, '\n') : null;
+
 const pool = new Pool({
     user: process.env.PGUSER,
     host: process.env.PGHOST,
@@ -64,10 +68,12 @@ app.post('/provision', async (req, res) => {
         );
 
         const certData = vaultRes.data.data;
+        const intermediateCa = Array.isArray(certData.ca_chain) ? certData.ca_chain.join('\n') : certData.issuing_ca;
+
         res.json({
             certificate: certData.certificate,
             private_key: certData.private_key,
-            ca_chain: Array.isArray(certData.ca_chain) ? certData.ca_chain.join('\n') : certData.issuing_ca
+            ca_chain: `${intermediateCa}\n${bootstrapCa}`
         });
     } catch (error) {
         console.error('Provisioning failed:', error.response?.data || error.message);
@@ -78,10 +84,6 @@ app.post('/provision', async (req, res) => {
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
-
-const bootstrapCa = process.env.BOOTSTRAP_CA_DATA;
-const sslCert = process.env.SSL_CERT;
-const sslKey = process.env.SSL_KEY;
 
 if (!bootstrapCa || !sslCert || !sslKey) {
     console.error('Environment variables for pTSL certificate are incomplete!');

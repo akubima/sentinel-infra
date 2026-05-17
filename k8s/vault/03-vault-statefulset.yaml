@@ -6,8 +6,8 @@ metadata:
   labels:
     app: vault
 spec:
-  serviceName: vault-service
-  replicas: 2
+  serviceName: vault-internal-service
+  replicas: 3
   selector:
     matchLabels:
       app: vault
@@ -29,29 +29,37 @@ spec:
               name: http
             - containerPort: 8201
               name: internal
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
-              memory: "512Gi"
+              memory: "512Mi"
               cpu: "500m"
+            limits:
+              memory: "1024Mi"
+              cpu: "1000m"
           command: ["/bin/sh", "-c"]
           args:
             - "vault server -config=/vault/config/vault.json"
           env:
+            - name: VAULT_ADDR
+              value: "http://127.0.0.1:8200"
             - name: SKIP_CHOWN
               value: "true"
             - name: SKIP_SETCAP
               value: "true"
-            - name: POD_IP
+            - name: POD_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP
+                  fieldPath: metadata.name
             - name: VAULT_CLUSTER_ADDR
-              value: "http://$(POD_IP):8201"
+              value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8201"
             - name: VAULT_API_ADDR
-              value: "http://$(POD_IP):8200"
+              value: "http://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
           securityContext:
             capabilities:
               add:

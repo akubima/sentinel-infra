@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vault-service
+  name: vault-internal-service
   namespace: vault
   labels:
     app: vault
@@ -15,6 +15,25 @@ spec:
       targetPort: 8201
   selector:
     app: vault
+  clusterIP: None
+  publishNotReadyAddresses: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-service
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  selector:
+    app: vault
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200
+  sessionAffinity: ClientIP
   type: LoadBalancer
 #  type: ClusterIP
 #  externalIPs:
