@@ -10,6 +10,8 @@ spec:
       app: grafana
   template:
     metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret"
       labels:
         app: grafana
     spec:
@@ -25,18 +27,18 @@ spec:
             - name: GF_DATABASE_TYPE
               value: postgres
             - name: GF_DATABASE_HOST
-              value: timescaledb-service.sentinel-infra.svc.cluster.local:5432
+              value: postgres-service.sentinel-infra.svc.cluster.local:5432
             - name: GF_DATABASE_NAME
               value: grafana
             - name: GF_DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: postgres-secret
                   key: POSTGRES_USER
             - name: GF_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: postgres-secret
                   key: POSTGRES_PASSWORD
           ports:
             - containerPort: 3000

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: timescaledb-init-script-config
+  name: postgres-init-script-config
   namespace: sentinel-infra
 data:
   init.sql: |

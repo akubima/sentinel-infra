@@ -7,10 +7,10 @@ data:
   datasources.yaml: |
     apiVersion: 1
     datasources:
-      - name: timescaledb-service.sentinel-infra.svc.cluster.local
+      - name: postgres-service.sentinel-infra.svc.cluster.local
         type: ${GF_DATABASE_TYPE}
         access: proxy
-        url: timescaledb-service.sentinel-infra.svc.cluster.local:5432
+        url: postgres-service.sentinel-infra.svc.cluster.local:5432
         user: ${GF_DATABASE_USER}
         database: "sentinel"
         isDefault: true

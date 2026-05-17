@@ -10,6 +10,8 @@ spec:
       app: provisioning
   template:
     metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret,provisioning-secret"
       labels:
         app: provisioning
     spec:
@@ -33,18 +35,18 @@ spec:
             - name: VAULT_ADDR
               value: "http://vault-service.vault.svc.cluster.local:8200"
             - name: PGHOST
-              value: "timescaledb-service.sentinel-infra.svc.cluster.local"
+              value: "postgres-service.sentinel-infra.svc.cluster.local"
             - name: PGDATABASE
               value: "sentinel"
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: postgres-secret
                   key: POSTGRES_USER
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: postgres-secret
                   key: POSTGRES_PASSWORD
             - name: SSL_CERT
               valueFrom:

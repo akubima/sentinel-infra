@@ -1,27 +1,29 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: timescaledb
+  name: postgres
   namespace: sentinel-infra
 spec:
-  serviceName: timescaledb-service
+  serviceName: postgres-service
   replicas: 1
   selector:
     matchLabels:
-      app: timescaledb
+      app: postgres
   template:
     metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret"
       labels:
-        app: timescaledb
+        app: postgres
     spec:
       containers:
-        - name: timescaledb
+        - name: postgres
           image: timescale/timescaledb:2.15.3-pg16
           ports:
             - containerPort: 5432
           envFrom:
             - secretRef:
-                name: timescaledb-secret
+                name: postgres-secret
           resources:
             requests:
               cpu: 500m
@@ -48,14 +50,14 @@ spec:
             periodSeconds: 10
             failureThreshold: 3
           volumeMounts:
-            - name: timescaledb-data-storage
+            - name: postgres-data-storage
               mountPath: /var/lib/postgresql/data
-            - name: timescaledb-init-script-storage
+            - name: postgres-init-script-storage
               mountPath: /docker-entrypoint-initdb.d/
       volumes:
-        - name: timescaledb-data-storage
+        - name: postgres-data-storage
           persistentVolumeClaim:
-            claimName: timescaledb-data-pvc
-        - name: timescaledb-init-script-storage
+            claimName: postgres-data-pvc
+        - name: postgres-init-script-storage
           configMap:
-            name: timescaledb-init-script-config
+            name: postgres-init-script-config
