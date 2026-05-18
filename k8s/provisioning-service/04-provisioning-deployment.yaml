@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisioning
+  namespace: sentinel-infra
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: provisioning
+  template:
+    metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret,provisioning-secret"
+      labels:
+        app: provisioning
+    spec:
+      serviceAccountName: provisioning-service-sa
+      containers:
+        - name: provisioning
+          image: provisioning-service:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: PORT
+              value: "3001"
+            - name: VAULT_ADDR
+              value: "http://vault-service.vault.svc.cluster.local:8200"
+            - name: PGHOST
+              value: "postgres-service.sentinel-infra.svc.cluster.local"
+            - name: PGDATABASE
+              value: "sentinel"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: certs-storage
+              mountPath: /etc/certs
+              readOnly: true
+      volumes:
+        - name: certs-storage
+          secret:
+            secretName: provisioning-secret
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt

@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vault
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  serviceName: vault-internal-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      securityContext:
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: vault
+          image: hashicorp/vault:2.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8200
+              name: http
+            - containerPort: 8201
+              name: internal
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true
+              port: 8200
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1024Mi"
+              cpu: "1000m"
+          command: ["/bin/sh", "-c"]
+          args:
+            - "vault server -config=/vault/config/vault.json"
+          env:
+            - name: VAULT_ADDR
+              value: "http://127.0.0.1:8200"
+            - name: SKIP_CHOWN
+              value: "true"
+            - name: SKIP_SETCAP
+              value: "true"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: VAULT_CLUSTER_ADDR
+              value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8201"
+            - name: VAULT_API_ADDR
+              value: "http://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          volumeMounts:
+            - name: vault-data-storage
+              mountPath: /vault/file
+            - name: vault-config
+              mountPath: /vault/config
+      volumes:
+        - name: vault-config
+          configMap:
+            name: vault-config
+  volumeClaimTemplates:
+    - metadata:
+        name: vault-data-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi

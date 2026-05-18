@@ -1,16 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: grafana
   name: grafana
-  namespace: sentinel-stack
+  namespace: sentinel-infra
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: grafana
   template:
     metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret"
       labels:
         app: grafana
     spec:
@@ -22,6 +23,33 @@ spec:
         - name: grafana
           image: grafana/grafana:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - name: GF_DATABASE_TYPE
+              value: postgres
+            - name: GF_DATABASE_HOST
+              value: postgres-rw.sentinel-infra.svc.cluster.local:5432
+            - name: GF_DATABASE_NAME
+              value: grafana
+            - name: GF_DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: GF_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: DATA_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DATA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
           ports:
             - containerPort: 3000
               name: http-grafana
@@ -48,10 +76,14 @@ spec:
             requests:
               cpu: 250m
               memory: 750Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
           volumeMounts:
-            - mountPath: /var/lib/grafana
-              name: grafana-storage
+            - name: grafana-config
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              subPath: datasources.yaml
       volumes:
-        - name: grafana-storage
-          persistentVolumeClaim:
-            claimName: grafana-pvc
+        - name: grafana-config
+          configMap:
+            name: grafana-config

@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: provisioning-service-issuer
+  namespace: sentinel-infra
+spec:
+  vault:
+    server: http://vault-service.vault.svc.cluster.local:8200
+    path: sentinel-pki/sign/infrastructure-prod
+    auth:
+      kubernetes:
+        role: provisioning-service-role
+        mountPath: /v1/auth/kubernetes
+        serviceAccountRef:
+          name: provisioning-service-sa

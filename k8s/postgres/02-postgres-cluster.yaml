@@ -1,0 +1,101 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: sentinel-infra
+spec:
+  instances: 3
+  imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  bootstrap:
+    initdb:
+      secret:
+        name: postgres-secret
+      owner: sentinel
+      database: sentinel
+
+      # LANGKAH 1: Set izin global di template agar diwariskan ke DB Grafana nanti
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS timescaledb;
+        - CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        - GRANT ALL ON SCHEMA public TO sentinel;
+
+      # LANGKAH 2: Konstruksi semua objek internal database sentinel di sini
+      postInitApplicationSQL:
+        # Berikan hak akses skema public di DB utama
+        - GRANT ALL ON SCHEMA public TO sentinel;
+
+        # Buat fungsi ULID dan langsung amankan kepemilikannya
+        - |
+          CREATE OR REPLACE FUNCTION generate_ulid() RETURNS TEXT AS \$_$
+          DECLARE
+            encoding   TEXT = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+            time_ms    BIGINT = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+            res        TEXT = '';
+            i          INTEGER;
+            bytes      BYTEA;
+            val        INTEGER;
+          BEGIN
+          -- Menggunakan fungsi bawaan crypto v17 yang dijamin aman tanpa dependensi pgcrypto lama
+            bytes = gen_random_bytes(11);
+            
+            FOR i IN REVERSE 9..0 LOOP
+            res = res || SUBSTR(encoding, ((time_ms >> (i * 5)) & 31)::INTEGER + 1, 1);
+            END LOOP;
+          
+            FOR i IN 0..15 LOOP
+            val = (get_byte(bytes, (i * 5) / 8) << 8) | get_byte(bytes, ((i * 5) / 8) + 1);
+            res = res || SUBSTR(encoding, ((val >> (11 - (i * 5) % 8)) & 31)::INTEGER + 1, 1);
+            END LOOP;
+          
+            RETURN res;
+          END;
+          \$_$ LANGUAGE plpgsql VOLATILE;
+          "
+        - ALTER FUNCTION generate_ulid() OWNER TO sentinel;
+
+        # Buat database pendukung untuk Grafana
+        - CREATE DATABASE grafana;
+
+        # Buat tabel devices dan set pemiliknya ke sentinel
+        - |
+          CREATE TABLE devices (
+              id VARCHAR(26) PRIMARY KEY DEFAULT generate_ulid(),
+              node_id VARCHAR(17) UNIQUE,
+              name VARCHAR(30),
+              location VARCHAR(120),
+              latitude DECIMAL(9,6),
+              longitude DECIMAL(9,6),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP NULL DEFAULT NULL
+          );
+        - ALTER TABLE devices OWNER TO sentinel;
+
+        # Masukkan baris data contoh awal
+        - |
+          INSERT INTO devices (node_id, name, location, latitude, longitude)
+          VALUES ('CE2BF215788', 'Prototype Node', 'Department TEDI', -7.775418, 110.374250);
+
+        # Buat tabel telemetry dan set pemiliknya ke sentinel
+        - |
+          CREATE TABLE device_telemetry (
+              time    TIMESTAMPTZ NOT NULL,
+              id      VARCHAR(26) NOT NULL,
+              metrics JSONB       NOT NULL
+          );
+        - ALTER TABLE device_telemetry OWNER TO sentinel;
+
+        # Nyalakan fitur hypertable TimescaleDB bawaan
+        - SELECT create_hypertable('device_telemetry', 'time');
+        - CREATE INDEX idx_id_time ON device_telemetry(id, time DESC);
+  postgresql:
+    shared_preload_libraries:
+      - "timescaledb"
+  storage:
+    size: 20Gi

@@ -1,0 +1,276 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-watcher-role
+  namespace: vault
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-watcher-rb
+subjects:
+  - kind: ServiceAccount
+    name: vault-watcher-sa
+    namespace: vault
+roleRef:
+  kind: ClusterRole
+  name: vault-watcher-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-watcher-sa
+  namespace: vault
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-watcher
+  namespace: vault
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-watcher-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: watcher-operator
+              image: alpine/k8s:1.34.3
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  SECRET_EXISTS=$(kubectl get secret vault-secret -n vault --no-headers 2>/dev/null | awk '{print $1}')
+
+                  VAULT0_STATUS_JSON=$(kubectl exec -n vault vault-0 -- vault status -format=json 2>/dev/null)
+                  VAULT0_EXIT_CODE=$?
+
+                  if [ $VAULT0_EXIT_CODE -eq 0 ] || [ $VAULT0_EXIT_CODE -eq 2 ]; then
+                    VAULT0_INIT_STATUS=$(echo "$VAULT0_STATUS_JSON" | jq -r '.initialized' 2>/dev/null)
+                  else
+                    VAULT0_INIT_STATUS="UNKNOWN_ERROR"
+                    echo "Failed to get vault-0 status. Exit code: $VAULT0_EXIT_CODE"
+                  fi
+
+                  if [ "$VAULT0_INIT_STATUS" = "false" ]; then
+                    if [ -n "$SECRET_EXISTS" ]; then
+                      echo "Failed vault-0 report initialized: false, but vault-secret already exists."
+                      echo "Initialization stopped to protect the existing vault-secret."
+                      exit 1
+                    fi
+
+                    echo "vault-0 is not initialized yet. Initializing vault..."
+                    VAULT0_INIT_OUT=$(kubectl exec -n vault vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json 2>/dev/null)
+
+                    ROOT_TOKEN=$(echo "$VAULT0_INIT_OUT" | jq -r '.root_token' 2>/dev/null)
+                    UNSEAL_KEYS=$(echo "$VAULT0_INIT_OUT" | jq -r '.unseal_keys_b64 | join(",")' 2>/dev/null)
+
+                    if [ "$ROOT_TOKEN" != "null" ] && [ -n "$ROOT_TOKEN" ] && [ "$UNSEAL_KEYS" != "null" ] && [ -n "$UNSEAL_KEYS" ]; then
+                      kubectl delete secret vault-secret -n vault --ignore-not-found
+                      kubectl create secret generic vault-secret -n vault \
+                        --from-literal=root-token="$ROOT_TOKEN" \
+                        --from-literal=unseal-keys="$UNSEAL_KEYS"
+                      echo "Successfully initialized vault-0, vault-secret created."
+                    else
+                      echo "Failed to initialize vault-0."
+                    fi
+                  elif [ "$VAULT0_INIT_STATUS" = "true" ]; then
+                    echo "vault-0 is already initialized, continuing..."
+                  fi
+
+                  PODS=$(kubectl get pods -n vault -l app=vault --no-headers -o custom-columns=":metadata.name" | sort)
+                  KEYS=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.unseal-keys}' | base64 -d)
+                  KEY1=$(echo $KEYS | cut -d',' -f1)
+                  KEY2=$(echo $KEYS | cut -d',' -f2)
+                  KEY3=$(echo $KEYS | cut -d',' -f3)
+
+                  for POD_NAME in $PODS; do
+                    echo "=================================================="
+                    echo "Processing $POD_NAME..."
+                    kubectl wait --for=jsonpath='{.status.phase}'=Running pod/$POD_NAME -n vault --timeout=30s || continue
+
+                    INIT=$(kubectl exec -n vault $POD_NAME -- vault status 2>/dev/null | grep "^Initialized" | awk '{print $2}')
+                    SEALED=$(kubectl exec -n vault $POD_NAME -- vault status 2>/dev/null | grep "^Sealed" | awk '{print $2}')
+                    echo "$POD_NAME -> Initialized: $INIT, Sealed: $SEALED"
+
+                    if [ "$INIT" = "false" ]; then
+                      echo "$POD_NAME has not been initialized yet. Trying to join raft through active nodes..."
+                      JOINED=false
+                      for PEER in $PODS; do
+                        if [ "$PEER" = "$POD_NAME" ]; then continue; fi
+                        echo "Trying to join raft through http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 ..."
+                        JOIN_RESULT=$(kubectl exec -n vault $POD_NAME -- vault operator raft join \
+                          http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 2>&1)
+                        if echo "$JOIN_RESULT" | grep -qi "successfully\|joined"; then
+                          echo "Successfully join raft through $PEER."
+                          JOINED=true
+                          break
+                        fi
+                      done
+                      if [ "$JOINED" = "false" ]; then
+                        echo "Failed to join raft for $POD_NAME."
+                        continue
+                      fi
+                      SEALED="true"
+                    fi
+
+                    if [ "$SEALED" = "true" ]; then
+                      echo "Unsealing $POD_NAME..."
+                      kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY1 >/dev/null
+                      kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY2 >/dev/null
+                      UNSEAL_OUT=$(kubectl exec -n vault $POD_NAME -- vault operator unseal $KEY3 2>&1)
+
+                      if echo "$UNSEAL_OUT" | grep -qi "error"; then
+                        echo "Failed to unseal $POD_NAME because of internal/raft error:"
+                        echo "$UNSEAL_OUT"
+                        if [ "$POD_NAME" != "vault-0" ]; then
+                          echo "Performing recovery, deleting corrupted pod $POD_NAME..."
+                          kubectl exec -n vault $POD_NAME -- sh -c 'rm -rf /vault/file/*'
+                          kubectl delete pod $POD_NAME -n vault
+                        fi
+                        continue
+                      fi
+                      echo "$POD_NAME unsealed."
+                    else
+                      echo "$POD_NAME is active and unsealed."
+                    fi
+                  done
+
+                  if [ -z "$ROOT_TOKEN" ] && [ -n "$SECRET_EXISTS" ]; then
+                    ROOT_TOKEN=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.root-token}' | base64 -d 2>/dev/null)
+                  fi
+
+                  # === AUTOMATED INITIAL SETUP CONFIGURATION FOR SENTINEL WORKSPACE ===
+                  if [ -n "$ROOT_TOKEN" ]; then
+                    SETUP_CHECK=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets list -format=json 2>/dev/null | jq -r '."sentinel-root-ca/"' 2>/dev/null)
+                    if [ "$SETUP_CHECK" = "null" ] || [ -z "$SETUP_CHECK" ]; then
+                      echo "----------------------------------------------------------------------"
+                      echo "Sentinel PKI and Auth Roles not detected. Initiating deployment setup..."
+
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault auth enable kubernetes || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN sh -c '
+                        vault write auth/kubernetes/config \
+                        kubernetes_host="https://kubernetes.default.svc:443" \
+                        kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                        token_reviewer_jwt=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) \
+                        disable_iss_validation=true \
+                        disable_local_ca_jwt=true
+                      '
+
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" || true
+
+                      # 1. Setup Root CA
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-root-ca pki || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets tune -max-lease-ttl=175200h sentinel-root-ca
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -field=certificate sentinel-root-ca/root/generate/internal \
+                        common_name="Sentinel Root CA" organization="Universitas Gadjah Mada" ou="Sentinel" locality="Yogyakarta" province="Daerah Istimewa Yogyakarta" country="ID" ttl=175200h > /tmp/root_ca.crt
+
+                      # 2. Setup Intermediate CA
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-pki pki || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets tune -max-lease-ttl=87600h sentinel-pki
+
+                      # Perbaikan Fatal: Menghasilkan CSR dari Intermediate Engine
+                      CSR_OUT=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -format=json sentinel-pki/intermediate/generate/internal \
+                        common_name="Sentinel Intermediate CA" organization="Universitas Gadjah Mada" ou="Sentinel" locality="Yogyakarta" province="Daerah Istimewa Yogyakarta" country="ID")
+                      CSR=$(echo "$CSR_OUT" | jq -r '.data.csr')
+
+                      # Perbaikan Utama: Ekstrak sertifikat hasil sign DAN gabungkan Root CA agar membentuk Rantai Valid (Chain)
+                      SIGN_OUT=$(echo "$CSR" | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -format=json sentinel-root-ca/root/sign-intermediate csr=- format=pem_bundle ttl="87600h")
+                      
+                      INT_CERT=$(echo "$SIGN_OUT" | jq -r '.data.certificate')
+                      
+                      kubectl exec -n vault vault-0 -- sh -c "
+                        echo '$INT_CERT' > /tmp/int_cert.crt
+                        cat /tmp/root_ca.crt >> /tmp/int_cert.crt
+                        env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/intermediate/set-signed certificate=@/tmp/int_cert.crt
+                      "
+
+                      # Konfigurasi URL Distribusi yang Valid
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/config/urls issuing_certificates="http://vault-service.vault.svc.cluster.local:8200/v1/sentinel-pki/ca_chain,http://10.33.102.168:8200/v1/sentinel-pki/ca_chain,https://vault-sentinel-tedi.bima.dev/v1/sentinel-pki/ca_chain" \
+                        crl_distribution_points="http://vault-service.vault.svc.cluster.local:8200/v1/sentinel-pki/crl,http://10.33.102.168:8200/v1/sentinel-pki/crl,https://vault-sentinel-tedi.bima.dev/v1/sentinel-pki/crl"
+
+                      # 3. Create PKI Roles
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/roles/infrastructure-prod \
+                        allowed_domains="bima.dev,svc.cluster.local,localhost" \
+                        allow_any_name=true \
+                        allow_subdomains=true \
+                        allow_bare_domains=true \
+                        allow_localhost=true \
+                        allow_ip_sans=true \
+                        enforce_hostnames=false \
+                        organization="Universitas Gadjah Mada" \
+                        ou="Sentinel" \
+                        locality="Yogyakarta" \
+                        province="Daerah Istimewa Yogyakarta" \
+                        country="ID" \
+                        require_cn=false \
+                        server_flag=true \
+                        client_flag=true \
+                        max_ttl="8760h"
+
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/roles/iot-node-prod \
+                        allowed_domains="local" \
+                        allow_any_name=true \
+                        enforce_hostnames=false \
+                        organization="Universitas Gadjah Mada" \
+                        ou="Sentinel" \
+                        locality="Yogyakarta" \
+                        province="Daerah Istimewa Yogyakarta" \
+                        country="ID" \
+                        server_flag=false \
+                        client_flag=true \
+                        max_ttl="8760h"
+
+                      # 4. Create Policies (Fed seamlessly via stdin to bypass multi-line quote restrictions)
+                      echo 'path "sentinel-pki/sign/infrastructure-prod" { capabilities = ["create", "update"] } path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*"{ capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write emqx-policy -
+                      echo 'path "sentinel-pki/sign/iot-node-prod" { capabilities = ["create", "update"] } path "sentinel-pki/issue/iot-node-prod" { capabilities = ["create", "update"] } path "sentinel-pki/sign/infrastructure-prod" { capabilities = ["create", "update"] } path "sentinel-pki/issue/infrastructure-prod" { capabilities = ["create", "update"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write provisioning-service-policy -
+                      echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write kv-prod-policy -
+
+                      # 5. Create Kubernetes Auth Engine Roles
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/emqx-role bound_service_account_names=emqx-sa bound_service_account_namespaces=sentinel-infra policies=emqx-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/provisioning-service-role bound_service_account_names=provisioning-service-sa bound_service_account_namespaces=sentinel-infra policies=provisioning-service-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra policies=kv-prod-policy ttl=1h
+
+                      echo "Automated Deployment Setup completed successfully."
+                      echo "----------------------------------------------------------------------"
+                    fi
+                  fi
+                  # === AUTOMATED INITIAL SETUP CONFIGURATION END ===
+
+                  echo "=================================================="
+                  echo "Checking for ghost peers in raft (stale peer)..."
+                  K8S_PODS=$(kubectl get pods -n vault -l app=vault --no-headers -o custom-columns=":metadata.name")
+
+                  kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft list-peers -format=json" 2>/dev/null | jq -r '.data.config.servers[] | "\(.node_id) \(.address)"' 2>/dev/null | while read -r NODE_ID ADDRESS; do
+                      [ -z "$NODE_ID" ] && continue
+                      POD_NAME_FROM_RAFT=$(echo "$ADDRESS" | cut -d'.' -f1)
+                      if ! echo "$K8S_PODS" | grep -q "^$POD_NAME_FROM_RAFT$"; then
+                        echo "Detected ghost peer: $NODE_ID (pod has been deleted from k8s)."
+                        echo "Kicking ghost peer $NODE_ID from raft..."
+                        kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft remove-peer $NODE_ID"
+                      else
+                        echo "Pod $POD_NAME_FROM_RAFT (ID: $NODE_ID) is active."
+                      fi
+                  done
+                  echo "Ghost peers detection completed."

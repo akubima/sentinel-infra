@@ -1,16 +1,5 @@
 # Kubernetes and Docker Deployment secure .gitignore
 
-# -----------------------------------------------------------------------------
-# Secrets and Credentials
-# -----------------------------------------------------------------------------
-# Ignore all files containing 'secret' in their name
-*.secret.yaml
-*.secret.yml
-*secret*.yml
-*secret*.yaml
-*secret*.json
-*secret*.txt
-
 # Passwords, keys, and certificates
 *.key
 *.pem
