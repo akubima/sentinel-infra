@@ -7,11 +7,11 @@ data:
   datasources.yaml: |
     apiVersion: 1
     datasources:
-      - name: postgres-service.sentinel-infra.svc.cluster.local
-        type: ${GF_DATABASE_TYPE}
+      - name: postgres-rw.sentinel-infra.svc.cluster.local
+        type: postgres
         access: proxy
-        url: postgres-service.sentinel-infra.svc.cluster.local:5432
-        user: ${GF_DATABASE_USER}
+        url: postgres-rw.sentinel-infra.svc.cluster.local:5432
+        user: ${DATA_DB_USER}
         database: "sentinel"
         isDefault: true
         jsonData:

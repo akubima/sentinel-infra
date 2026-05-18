@@ -1,54 +1,54 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postgres-init-script-config
-  namespace: sentinel-infra
-data:
-  init.sql: |
-    CREATE EXTENSION IF NOT EXISTS pgcrypto;
-    CREATE OR REPLACE FUNCTION generate_ulid() RETURNS TEXT AS $$
-    DECLARE
-      encoding   TEXT = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-      time_ms    BIGINT = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
-      res        TEXT = '';
-      i          INTEGER;
-      bytes      BYTEA = gen_random_bytes(11);
-      val        INTEGER;
-    BEGIN
-      FOR i IN REVERSE 9..0 LOOP
-        res = res || SUBSTR(encoding, ((time_ms >> (i * 5)) & 31)::INTEGER + 1, 1);
-      END LOOP;
-      
-      FOR i IN 0..15 LOOP
-        val = (get_byte(bytes, (i * 5) / 8) << 8) | get_byte(bytes, ((i * 5) / 8) + 1);
-        res = res || SUBSTR(encoding, ((val >> (11 - (i * 5) % 8)) & 31)::INTEGER + 1, 1);
-      END LOOP;
-      
-      RETURN res;
-    END;
-    $$ LANGUAGE plpgsql VOLATILE;
-    -------------------------------
-    CREATE DATABASE grafana OWNER sentinel;
-    
-    CREATE TABLE devices (
-        id VARCHAR(26) PRIMARY KEY DEFAULT generate_ulid(),
-        node_id VARCHAR(17) UNIQUE,
-        name VARCHAR(30),
-        location VARCHAR(120),
-        latitude DECIMAL(9,6),
-        longitude DECIMAL(9,6),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NULL DEFAULT NULL
-    );
-    
-    INSERT INTO devices (node_id, name, location, latitude, longitude)
-    VALUES ('CE2BF215788', 'Prototype Node', 'Department TEDI', -7.775418, 110.374250);
-    
-    CREATE TABLE device_telemetry
-    (
-        time    TIMESTAMPTZ NOT NULL,
-        id      VARCHAR(26) NOT NULL,
-        metrics JSONB       NOT NULL
-    );
-    SELECT create_hypertable('device_telemetry', 'time');
-    CREATE INDEX idx_id_time ON device_telemetry(id, time DESC);
+#apiVersion: v1
+#kind: ConfigMap
+#metadata:
+#  name: postgres-init-script-config
+#  namespace: sentinel-infra
+#data:
+#  init.sql: |
+#    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+#    CREATE OR REPLACE FUNCTION generate_ulid() RETURNS TEXT AS $$
+#    DECLARE
+#      encoding   TEXT = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+#      time_ms    BIGINT = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+#      res        TEXT = '';
+#      i          INTEGER;
+#      bytes      BYTEA = gen_random_bytes(11);
+#      val        INTEGER;
+#    BEGIN
+#      FOR i IN REVERSE 9..0 LOOP
+#        res = res || SUBSTR(encoding, ((time_ms >> (i * 5)) & 31)::INTEGER + 1, 1);
+#      END LOOP;
+#
+#      FOR i IN 0..15 LOOP
+#        val = (get_byte(bytes, (i * 5) / 8) << 8) | get_byte(bytes, ((i * 5) / 8) + 1);
+#        res = res || SUBSTR(encoding, ((val >> (11 - (i * 5) % 8)) & 31)::INTEGER + 1, 1);
+#      END LOOP;
+#
+#      RETURN res;
+#    END;
+#    $$ LANGUAGE plpgsql VOLATILE;
+#    -------------------------------
+#    CREATE DATABASE grafana OWNER sentinel;
+#
+#    CREATE TABLE devices (
+#        id VARCHAR(26) PRIMARY KEY DEFAULT generate_ulid(),
+#        node_id VARCHAR(17) UNIQUE,
+#        name VARCHAR(30),
+#        location VARCHAR(120),
+#        latitude DECIMAL(9,6),
+#        longitude DECIMAL(9,6),
+#        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+#        updated_at TIMESTAMP NULL DEFAULT NULL
+#    );
+#
+#    INSERT INTO devices (node_id, name, location, latitude, longitude)
+#    VALUES ('CE2BF215788', 'Prototype Node', 'Department TEDI', -7.775418, 110.374250);
+#
+#    CREATE TABLE device_telemetry
+#    (
+#        time    TIMESTAMPTZ NOT NULL,
+#        id      VARCHAR(26) NOT NULL,
+#        metrics JSONB       NOT NULL
+#    );
+#    SELECT create_hypertable('device_telemetry', 'time');
+#    CREATE INDEX idx_id_time ON device_telemetry(id, time DESC);
