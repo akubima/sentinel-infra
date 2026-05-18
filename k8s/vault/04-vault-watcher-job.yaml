@@ -176,9 +176,13 @@ spec:
                       '
 
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" password="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/cloudflared token="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/cloudflared token="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/cloudflared token="" || true
 
                       # 1. Setup Root CA
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-root-ca pki || true

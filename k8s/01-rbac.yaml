@@ -29,7 +29,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: cert-manager
-    namespace: cert-manager # Sesuaikan dengan namespace tempat cert-manager lu tinggal
+    namespace: cert-manager # Sesuaikan dengan namespace tempat cert-manager tinggal
 roleRef:
   kind: ClusterRole
   name: cert-manager-vault-token-issuer

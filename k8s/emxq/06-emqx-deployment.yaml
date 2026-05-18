@@ -16,7 +16,7 @@ spec:
       serviceAccountName: emqx-sa
       containers:
         - name: emqx
-          image: emqx/emqx-enterprise:latest
+          image: emqx/emqx-enterprise:6.0.0
           ports:
             - containerPort: 8883
             - containerPort: 18083
