@@ -98,3 +98,4 @@ spec:
       - "timescaledb"
   storage:
     size: 20Gi
+    storageClassName: longhorn-retained
