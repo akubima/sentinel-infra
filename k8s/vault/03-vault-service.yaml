@@ -34,4 +34,7 @@ spec:
       port: 8200
       targetPort: 8200
   type: ClusterIP
-#  sessionAffinity: ClientIP
+  externalIPs:
+    - 10.33.102.168
+    - 10.33.102.253
+  sessionAffinity: ClientIP

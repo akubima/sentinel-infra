@@ -16,6 +16,7 @@ spec:
       labels:
         app: vault
     spec:
+      serviceAccountName: default
       securityContext:
         runAsUser: 100
         runAsGroup: 1000
