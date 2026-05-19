@@ -4,7 +4,7 @@ metadata:
   name: postgres
   namespace: sentinel-infra
 spec:
-  instances: 3
+  instances: 2
   imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5
   resources:
     requests:
