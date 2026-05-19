@@ -14,9 +14,13 @@ spec:
         app: emqx
     spec:
       serviceAccountName: emqx-sa
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: emqx
           image: emqx/emqx-enterprise:6.0.0
+          securityContext:
+            runAsUser: 1000
           ports:
             - containerPort: 8883
             - containerPort: 18083
