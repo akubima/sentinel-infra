@@ -18,7 +18,7 @@ spec:
       serviceAccountName: provisioning-service-sa
       containers:
         - name: provisioning
-          image: provisioning-service:1.0.0
+          image: 10.33.102.168:30500/provisioning-service:1.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 3001
