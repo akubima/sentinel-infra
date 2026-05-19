@@ -176,9 +176,9 @@ spec:
 
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
                       
-                      PGPASS_DEV=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
-                      PGPASS_STG=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
-                      PGPASS_PROD=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
+                      PGPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      PGPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      PGPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
