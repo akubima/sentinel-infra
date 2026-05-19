@@ -170,16 +170,20 @@ spec:
                         vault write auth/kubernetes/config \
                         kubernetes_host="https://kubernetes.default.svc:443" \
                         kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-                        token_reviewer_jwt=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) \
                         disable_iss_validation=true \
-                        disable_local_ca_jwt=true
+                        disable_local_ca_jwt=false
                       '
 
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" password="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
+                      
+                      PGPASS_DEV=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
+                      PGPASS_STG=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
+                      PGPASS_PROD=$(openssl rand -base64 48 | tr -d '\n/+=' | cut -c1-64)
+                      
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" || true
+                      
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/cloudflared token="" || true

@@ -33,5 +33,5 @@ spec:
     - name: http
       port: 8200
       targetPort: 8200
-  sessionAffinity: ClientIP
-  type: LoadBalancer
+  type: ClusterIP
+#  sessionAffinity: ClientIP
