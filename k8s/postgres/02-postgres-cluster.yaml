@@ -33,7 +33,7 @@ spec:
 
         # Buat fungsi ULID dan langsung amankan kepemilikannya
         - |
-          CREATE OR REPLACE FUNCTION generate_ulid() RETURNS TEXT AS \$_$
+          CREATE OR REPLACE FUNCTION generate_ulid() RETURNS TEXT AS $_$
           DECLARE
             encoding   TEXT = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
             time_ms    BIGINT = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
@@ -44,7 +44,7 @@ spec:
           BEGIN
           -- Menggunakan fungsi bawaan crypto v17 yang dijamin aman tanpa dependensi pgcrypto lama
             bytes = gen_random_bytes(11);
-            
+          
             FOR i IN REVERSE 9..0 LOOP
             res = res || SUBSTR(encoding, ((time_ms >> (i * 5)) & 31)::INTEGER + 1, 1);
             END LOOP;
@@ -56,8 +56,7 @@ spec:
           
             RETURN res;
           END;
-          \$_$ LANGUAGE plpgsql VOLATILE;
-          "
+          $_$ LANGUAGE plpgsql VOLATILE;
         - ALTER FUNCTION generate_ulid() OWNER TO sentinel;
 
         # Buat database pendukung untuk Grafana
