@@ -78,6 +78,7 @@ spec:
       spec:
         accessModes:
           - ReadWriteOnce
+        storageClassName: longhorn-retained
         resources:
           requests:
             storage: 5Gi
