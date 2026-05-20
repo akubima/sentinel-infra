@@ -4,7 +4,7 @@ metadata:
   name: longhorn-ui-service
   namespace: longhorn-system
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: longhorn-ui
   ports:
