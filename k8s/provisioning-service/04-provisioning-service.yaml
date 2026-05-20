@@ -12,3 +12,5 @@ spec:
   type: ClusterIP
   externalIPs:
     - 10.33.102.168
+    - 10.33.36.253
+    - 10.33.107.250
