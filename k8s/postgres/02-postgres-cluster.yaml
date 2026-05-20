@@ -19,14 +19,10 @@ spec:
         name: postgres-secret
       owner: sentinel
       database: sentinel
-
-      # LANGKAH 1: Set izin global di template agar diwariskan ke DB Grafana nanti
       postInitTemplateSQL:
         - CREATE EXTENSION IF NOT EXISTS timescaledb;
         - CREATE EXTENSION IF NOT EXISTS pgcrypto;
         - GRANT ALL ON SCHEMA public TO sentinel;
-
-      # LANGKAH 2: Konstruksi semua objek internal database sentinel di sini
       postInitApplicationSQL:
         # Berikan hak akses skema public di DB utama
         - GRANT ALL ON SCHEMA public TO sentinel;
