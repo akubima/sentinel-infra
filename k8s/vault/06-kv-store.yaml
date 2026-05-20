@@ -3,7 +3,12 @@ kind: ServiceAccount
 metadata:
   name: kv-sa
   namespace: sentinel-infra
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kv-sa
+  namespace: kube-system
 ---
 apiVersion: external-secrets.io/v1
 kind: SecretStore
@@ -22,3 +27,23 @@ spec:
           role: "kv-role"
           serviceAccountRef:
             name: "kv-sa"
+            namespace: sentinel-infra
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: kv
+  namespace: kube-system
+spec:
+  provider:
+    vault:
+      server: "http://vault-service.vault.svc.cluster.local:8200"
+      path: "sentinel-kv"
+      version: "v2"
+      auth:
+        kubernetes:
+          mountPath: "kubernetes"
+          role: "kv-role"
+          serviceAccountRef:
+            name: "kv-sa"
+            namespace: kube-system
