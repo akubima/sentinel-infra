@@ -30,6 +30,7 @@ server = "http://localhost:30500"
   capabilities = ["pull", "resolve", "push"]
   skip_verify = true
 EOF
+sudo sysctl --system
 sudo ctr plugins ls | grep cri
 # # Local runner example
 # Build
@@ -47,6 +48,7 @@ sudo apt update
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+kubeadm config images pull
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
