@@ -47,23 +47,6 @@ spec:
               value: "/opt/emqx/certs/tls.key"
             - name: EMQX_DASHBOARD__LISTENERS__HTTP__BIND
               value: "18083"
-            # PostgreSQL connector settings
-            - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__SERVER
-              value: "postgres-rw.sentinel-infra.svc.cluster.local:5432"
-            - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__DATABASE
-              value: "sentinel"
-            - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__POOL_SIZE
-              value: "8"
           livenessProbe:
             tcpSocket:
               port: 18083
@@ -87,11 +70,12 @@ spec:
             - name: emqx-certs-storage
               mountPath: /opt/emqx/certs
               readOnly: true
-            - name: emqx-temporary-storage
+            - name: emqx-data-storage
               mountPath: /opt/emqx/data
       volumes:
-        - name: emqx-temporary-storage
-          emptyDir: {}
+        - name: emqx-data-storage
+          persistentVolumeClaim:
+            claimName: emqx-data-pvc
         - name: emqx-certs-storage
           secret:
             secretName: emqx-cert-secret
