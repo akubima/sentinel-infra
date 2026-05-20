@@ -41,8 +41,8 @@ spec:
               cpu: 200m
               memory: 256Mi
             limits:
-              cpu: 600m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 1Gi
           command: ["/bin/sh", "-c"]
           args:
             - "vault server -config=/vault/config/vault.json"
@@ -59,10 +59,10 @@ spec:
               value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8201"
             - name: VAULT_API_ADDR
               value: "http://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
-          securityContext:
-            capabilities:
-              add:
-                - IPC_LOCK  # Required when disable_mlock: true
+#          securityContext:
+#            capabilities:
+#              add:
+#                - IPC_LOCK  # Required when disable_mlock: true
           volumeMounts:
             - name: vault-data-storage
               mountPath: /vault/file

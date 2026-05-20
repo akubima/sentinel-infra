@@ -117,31 +117,20 @@ app.get('/health', (req, res) => {
 const loadHttpsOptions = () => {
     const sslKey  = getCertFile('tls.key');
     const sslCert = getCertFile('tls.crt');
-    const caCert  = getCertFile('tls.crt');
 
-    // Fetch full chain from Vault directly — always up to date
-    // ca.crt from cert-manager may only contain issuing CA
-    const caChainFromFile = getCertFile('ca.crt') || '';
-    const caChainFromCert = getCertFile('tls-combined.pem') || ''; // additionalOutputFormats CombinedPEM
-
-    if (!caCert || !sslCert || !sslKey) {
+    if (!sslKey || !sslCert) {
         console.error('CRITICAL: Incomplete certificate files.');
         process.exit(1);
     }
 
-    // Build full CA bundle — deduplicate by checking if chain already included
-    const fullCaBundle = caChainFromFile.includes('-----BEGIN CERTIFICATE-----\n' + caChainFromFile.split('-----BEGIN CERTIFICATE-----\n')[1])
-        ? caChainFromFile
-        : caChainFromFile + '\n' + getCertFile('tls.crt'); // fallback
-
     return {
         key: sslKey,
         cert: sslCert,
-        ca: [caChainFromFile],
+        ca: [sslCert],
         requestCert: true,
         rejectUnauthorized: true
     };
-};
+}
 
 const httpsServer = https.createServer(loadHttpsOptions(), app);
 
@@ -157,6 +146,8 @@ fs.watch(MOUNT_PATH, (eventType, filename) => {
         }
     }
 });
+
+process.env.NODE_DEBUG = 'tls';
 
 httpsServer.listen(PORT, () => {
     console.log(`Node provisioning service is listening on port ${PORT}`);

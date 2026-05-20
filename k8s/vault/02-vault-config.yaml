@@ -18,6 +18,6 @@ data:
           "path": "/vault/file"
         }
       },
-      "disable_mlock": false,
+      "disable_mlock": true,
       "ui": true
     }
