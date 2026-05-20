@@ -56,12 +56,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postgres-secret
-                  key: user
+                  key: POSTGRES_USER
             - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: postgres-secret
-                  key: password
+                  key: POSTGRES_PASSWORD
             - name: EMQX_CONNECTORS__PGSQL__postgres-sentinel-infra__POOL_SIZE
               value: "8"
           livenessProbe:
