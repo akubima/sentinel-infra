@@ -20,7 +20,7 @@ spec:
         - name: registry-secret
       containers:
         - name: provisioning
-          image: registry.kube-system.svc.cluster.local:5000/provisioning-service:1.0.0
+          image: localhost:30500/provisioning-service:1.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 3001

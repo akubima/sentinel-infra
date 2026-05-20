@@ -22,11 +22,11 @@ sudo systemctl restart containerd
 sudo systemctl enable containerd
 sudo ctr plugins ls | grep cri
 # If using local registry add this
-sudo mkdir -p "/etc/containerd/certs.d/registry.kube-system.svc.cluster.local:5000"
-sudo tee "/etc/containerd/certs.d/registry.kube-system.svc.cluster.local:5000/hosts.toml" <<EOF
-server = "http://registry.kube-system.svc.cluster.local:5000"
+sudo mkdir -p "/etc/containerd/certs.d/localhost:30500"
+sudo tee "/etc/containerd/certs.d/localhost:30500/hosts.toml" <<EOF
+server = "http://localhost:30500"
 
-[host."http://registry.kube-system.svc.cluster.local:5000"]
+[host."http://localhost:30500"]
   capabilities = ["pull", "resolve", "push"]
   skip_verify = true
 EOF
@@ -35,9 +35,9 @@ sudo ctr plugins ls | grep cri
 # Build
 sudo docker build -t provisioning-service:1.0.0  provisioning-service/
 # Tag ke local registry
-sudo docker tag provisioning-service:1.0.0 registry.kube-system.svc.cluster.local:5000/provisioning-service:1.0.0
+sudo docker tag provisioning-service:1.0.0 localhost:30500/provisioning-service:1.0.0
 # Push
-sudo docker push registry.kube-system.svc.cluster.local:5000/provisioning-service:1.0.0
+sudo docker push localhost:30500/provisioning-service:1.0.0
 
 sudo apt install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p /etc/apt/keyrings
