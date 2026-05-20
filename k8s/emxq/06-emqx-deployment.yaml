@@ -61,11 +61,11 @@ spec:
             failureThreshold: 3
           resources:
             requests:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 300m
+              memory: 384Mi
             limits:
-              cpu: 1000m
-              memory: 1Gi
+              cpu: 700m
+              memory: 768Mi
           volumeMounts:
             - name: emqx-certs-storage
               mountPath: /opt/emqx/certs
@@ -78,4 +78,4 @@ spec:
             claimName: emqx-data-pvc
         - name: emqx-certs-storage
           secret:
-            secretName: emqx-secret
+            secretName: emqx-cert-secret
