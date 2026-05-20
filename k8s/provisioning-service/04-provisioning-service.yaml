@@ -9,4 +9,6 @@ spec:
       targetPort: 3001
   selector:
     app: provisioning
-  type: LoadBalancer
+  type: ClusterIP
+  externalIPs:
+    - 10.33.102.168

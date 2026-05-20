@@ -1,9 +1,9 @@
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: local-pool
-  namespace: metallb-system
-spec:
-  addresses:
-    - 10.33.102.251-10.33.102.253
-    - 10.33.102.249/32
+#apiVersion: metallb.io/v1beta1
+#kind: IPAddressPool
+#metadata:
+#  name: local-pool
+#  namespace: metallb-system
+#spec:
+#  addresses:
+#    - 10.33.102.251-10.33.102.253
+#    - 10.33.102.249/32
