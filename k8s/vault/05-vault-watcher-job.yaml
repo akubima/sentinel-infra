@@ -187,6 +187,14 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/cloudflared token="" || true
+                  
+                      REGISTRYPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      REGISTRYPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      REGISTRYPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                  
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/registry server_url="registry.kube-system.svc:5000" username="sentinel" password="$REGISTRYPASS_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/registry server_url="registry.kube-system.svc:5000" username="sentinel" password="$REGISTRYPASS_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/registry server_url="registry.kube-system.svc:5000" username="sentinel" password="$REGISTRYPASS_DEV" || true
 
                       # 1. Setup Root CA
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-root-ca pki || true

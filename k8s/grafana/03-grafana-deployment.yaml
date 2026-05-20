@@ -4,7 +4,7 @@ metadata:
   name: grafana
   namespace: sentinel-infra
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: grafana
@@ -74,11 +74,11 @@ spec:
             timeoutSeconds: 1
           resources:
             requests:
-              cpu: 250m
-              memory: 750Mi
+              cpu: 150m
+              memory: 512Mi
             limits:
               cpu: 500m
-              memory: 1Gi
+              memory: 768Mi
           volumeMounts:
             - name: grafana-config
               mountPath: /etc/grafana/provisioning/datasources/datasources.yaml

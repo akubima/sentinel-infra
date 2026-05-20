@@ -11,24 +11,26 @@ spec:
   template:
     metadata:
       annotations:
-        secret.reloader.stakater.com/reload: "postgres-secret,provisioning-secret"
+        secret.reloader.stakater.com/reload: "postgres-secret,provisioning-cert-secret"
       labels:
         app: provisioning
     spec:
       serviceAccountName: provisioning-service-sa
+      imagePullSecrets:
+        - name: registry-secret
       containers:
         - name: provisioning
-          image: 10.33.102.168:30500/provisioning-service:1.0.0
+          image: registry.kube-system.svc:5000/provisioning-service:1.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 3001
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
+              cpu: 150m
+              memory: 192Mi
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              cpu: 400m
+              memory: 384Mi
           env:
             - name: PORT
               value: "3001"
@@ -55,7 +57,7 @@ spec:
       volumes:
         - name: certs-storage
           secret:
-            secretName: provisioning-secret
+            secretName: provisioning-cert-secret
             items:
               - key: tls.crt
                 path: tls.crt

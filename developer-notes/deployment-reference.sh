@@ -86,9 +86,9 @@ sudo systemctl restart containerd
 # Build
 docker build -t provisioning-service:1.0.0 .
 # Tag ke local registry
-docker tag provisioning-service:1.0.0 localhost:30500/provisioning-service:1.0.0
+docker tag provisioning-service:1.0.0 registry.kube-system.svc:5000/provisioning-service:1.0.0
 # Push
-docker push localhost:30500/provisioning-service:1.0.0
+docker push registry.kube-system.svc:5000/provisioning-service:1.0.0
 
 
 # Create join command
