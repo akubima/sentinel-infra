@@ -33,11 +33,11 @@ EOF
 sudo ctr plugins ls | grep cri
 # # Local runner example
 # Build
-docker build -t provisioning-service:1.0.0 .
+sudo docker build -t provisioning-service:1.0.0  provisioning-service/
 # Tag ke local registry
-docker tag provisioning-service:1.0.0 registry.kube-system.svc:5000/provisioning-service:1.0.0
+sudo docker tag provisioning-service:1.0.0 registry.kube-system.svc:5000/provisioning-service:1.0.0
 # Push
-docker push registry.kube-system.svc:5000/provisioning-service:1.0.0
+sudo docker push registry.kube-system.svc:5000/provisioning-service:1.0.0
 
 sudo apt install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p /etc/apt/keyrings
