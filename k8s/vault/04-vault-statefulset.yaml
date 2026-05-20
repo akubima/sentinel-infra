@@ -59,10 +59,10 @@ spec:
               value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8201"
             - name: VAULT_API_ADDR
               value: "http://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
-#          securityContext:
-#            capabilities:
-#              add:
-#                - IPC_LOCK  # Required when disable_mlock: true
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
           volumeMounts:
             - name: vault-data-storage
               mountPath: /vault/file
