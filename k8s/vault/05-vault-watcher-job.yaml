@@ -266,7 +266,7 @@ spec:
                       # 5. Create Kubernetes Auth Engine Roles
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/emqx-role bound_service_account_names=emqx-sa bound_service_account_namespaces=sentinel-infra policies=emqx-policy ttl=1h
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/provisioning-service-role bound_service_account_names=provisioning-service-sa bound_service_account_namespaces=sentinel-infra policies=provisioning-service-policy ttl=1h
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra policies=kv-prod-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system policies=kv-prod-policy ttl=1h
 
                       echo "Automated Deployment Setup completed successfully."
                       echo "----------------------------------------------------------------------"

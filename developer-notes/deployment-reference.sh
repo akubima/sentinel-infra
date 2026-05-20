@@ -3,6 +3,7 @@
 sudo apt update && sudo apt upgrade -y
 sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
+sudo systemctl mask swap.target
 sudo modprobe overlay
 sudo modprobe br_netfilter
 sudo tee /etc/sysctl.d/kubernetes.conf <<EOF
@@ -19,6 +20,24 @@ containerd config default | sudo tee /etc/containerd/config.toml
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 sudo systemctl restart containerd
 sudo systemctl enable containerd
+sudo ctr plugins ls | grep cri
+# If using local registry add this
+sudo mkdir -p "/etc/containerd/certs.d/registry.kube-system.svc:5000"
+sudo tee "/etc/containerd/certs.d/registry.kube-system.svc:5000/hosts.toml" <<EOF
+server = "http://registry.kube-system.svc:5000"
+
+[host."http://registry.kube-system.svc:5000"]
+  capabilities = ["pull", "resolve", "push"]
+  skip_verify = true
+EOF
+sudo ctr plugins ls | grep cri
+# # Local runner example
+# Build
+docker build -t provisioning-service:1.0.0 .
+# Tag ke local registry
+docker tag provisioning-service:1.0.0 registry.kube-system.svc:5000/provisioning-service:1.0.0
+# Push
+docker push registry.kube-system.svc:5000/provisioning-service:1.0.0
 
 sudo apt install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p /etc/apt/keyrings
@@ -28,7 +47,7 @@ sudo apt update
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-sudo kubeadm init --pod-network-cidr=10.0.0.0/16
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -72,24 +91,8 @@ kubectl patch deployment metrics-server -n kube-system --type='json' -p='[
   }
 ]'
 
-# If using local registry add this
-sudo mkdir -p /etc/containerd/conf.d
-sudo tee /etc/containerd/conf.d/registry-mirror.toml <<EOF
-[plugins.'io.containerd.cri.v1.images']
-  [plugins.'io.containerd.cri.v1.images'.registry]
-    [plugins.'io.containerd.cri.v1.images'.registry.mirrors]
-      [plugins.'io.containerd.cri.v1.images'.registry.mirrors."10.33.102.168:30500"]
-        endpoint = ["http://10.33.102.168:30500"]
-EOF
-sudo systemctl restart containerd
-# # Local runner example
-# Build
-docker build -t provisioning-service:1.0.0 .
-# Tag ke local registry
-docker tag provisioning-service:1.0.0 registry.kube-system.svc:5000/provisioning-service:1.0.0
-# Push
-docker push registry.kube-system.svc:5000/provisioning-service:1.0.0
-
+# If want to use the control-plane also as worker run this to remove the trait
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 # Create join command
 kubeadm token create --print-join-command
