@@ -33,6 +33,7 @@ EOF
 sudo sysctl --system
 sudo ctr plugins ls | grep cri
 # # Local runner example
+sudo apt install docker.io -y
 # Build
 sudo docker build -t provisioning-service:1.0.0  provisioning-service/
 # Tag ke local registry

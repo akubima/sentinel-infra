@@ -8,7 +8,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 const VAULT_ADDR = process.env.VAULT_ADDR || 'http://vault-service.vault.svc.cluster.local:8200';
-
 const MOUNT_PATH = '/etc/certs';
 
 const getCertFile = (fileName) => {
@@ -36,20 +35,16 @@ async function getVaultTokenViaLogin() {
         if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
             return cachedToken;
         }
-
         const k8sTokenPath = '/var/run/secrets/kubernetes.io/serviceaccount/token';
         if (!fs.existsSync(k8sTokenPath)) throw new Error('K8s ServiceAccount token not found!');
-
         const k8sToken = fs.readFileSync(k8sTokenPath, 'utf8').trim();
         const loginRes = await axios.post(`${VAULT_ADDR}/v1/auth/kubernetes/login`, {
             jwt: k8sToken,
             role: 'provisioning-service-role'
         });
-
         cachedToken = loginRes.data.auth.client_token;
         const leaseDuration = loginRes.data.auth.lease_duration;
         tokenExpiry = Date.now() + (leaseDuration * 1000) - (60 * 1000);
-
         return cachedToken;
     } catch (err) {
         console.error('Failed to log in to vault:', err.message);
@@ -58,17 +53,20 @@ async function getVaultTokenViaLogin() {
 }
 
 app.use('/provision', (req, res, next) => {
-    const socket = req.socket;
-    if (!socket.authorized) {
-        console.warn(`Unauthorized request: ${socket.authorizationError || 'invalid client certificate.'}`);
+    const cert = req.socket.getPeerCertificate(true);
+    if (!cert || !cert.subject) {
+        console.warn('Unauthorized request: no client certificate.');
+        return res.status(401).json({ error: 'Unauthorized: no client certificate.' });
+    }
+    if (cert.subject.OU !== 'Sentinel') {
+        console.warn(`Unauthorized cert OU: ${cert.subject.OU}`);
         return res.status(401).json({ error: 'Unauthorized: invalid client certificate.' });
     }
     next();
 });
 
 app.post('/provision', async (req, res) => {
-    const caCert = getCertFile('tls.crt');
-
+    const caCert = getCertFile('ca.crt');
     if (!caCert) return res.status(500).json({ error: 'CA certificate not available.' });
 
     try {
@@ -87,17 +85,16 @@ app.post('/provision', async (req, res) => {
             `${VAULT_ADDR}/v1/sentinel-pki/issue/iot-node-prod`,
             {
                 common_name: node_id,
-                dns_sans: [logicalId], ttl: '8760h'
+                dns_sans: [logicalId],
+                ttl: '8760h'
             },
-            {
-                headers: {
-                    'X-Vault-Token': vaultToken
-                }
-            }
+            { headers: { 'X-Vault-Token': vaultToken } }
         );
 
         const certData = vaultRes.data.data;
-        const caChain = Array.isArray(certData.ca_chain) ? certData.ca_chain.join('\n') : certData.issuing_ca;
+        const caChain = Array.isArray(certData.ca_chain)
+            ? certData.ca_chain.join('\n')
+            : certData.issuing_ca;
 
         res.json({
             certificate: certData.certificate,
@@ -115,10 +112,11 @@ app.get('/health', (req, res) => {
 });
 
 const loadHttpsOptions = () => {
-    const sslKey  = getCertFile('tls.key');
+    const sslKey = getCertFile('tls.key');
     const sslCert = getCertFile('tls.crt');
+    const caCert = getCertFile('ca.crt');
 
-    if (!sslKey || !sslCert) {
+    if (!caCert || !sslCert || !sslKey) {
         console.error('CRITICAL: Incomplete certificate files.');
         process.exit(1);
     }
@@ -126,11 +124,11 @@ const loadHttpsOptions = () => {
     return {
         key: sslKey,
         cert: sslCert,
-        ca: [sslCert],
+        ca: [caCert],
         requestCert: true,
-        rejectUnauthorized: true
+        rejectUnauthorized: false  // ESP32 mbedTLS tidak kirim full chain, verify manual di middleware
     };
-}
+};
 
 const httpsServer = https.createServer(loadHttpsOptions(), app);
 
@@ -142,12 +140,10 @@ fs.watch(MOUNT_PATH, (eventType, filename) => {
             httpsServer.setSecureContext(newOptions);
             console.log('TLS context hot-reloaded successfully.');
         } catch (err) {
-            console.error('Failed to  hot-reload TLS context, fault:', err.message);
+            console.error('Failed to hot-reload TLS context, fault:', err.message);
         }
     }
 });
-
-process.env.NODE_DEBUG = 'tls';
 
 httpsServer.listen(PORT, () => {
     console.log(`Node provisioning service is listening on port ${PORT}`);
