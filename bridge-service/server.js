@@ -18,6 +18,14 @@ const pool = new Pool({
     password: process.env.PGPASSWORD,
 });
 
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+});
+
 // ==== Middleware
 const apiKeyAuth = (req, res, next) => {
     if (req.headers['x-api-key'] !== API_KEY) {
