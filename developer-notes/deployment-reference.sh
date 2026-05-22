@@ -33,12 +33,28 @@ EOF
 sudo sysctl --system
 sudo ctr plugins ls | grep cri
 # # Local runner example
+sudo apt install docker.io -y
 # Build
-sudo docker build -t provisioning-service:1.0.0  provisioning-service/
+sudo docker build -t bridge-service:1.0.0  bridge-service/
 # Tag ke local registry
-sudo docker tag provisioning-service:1.0.0 localhost:30500/provisioning-service:1.0.0
+sudo docker tag bridge-service:1.0.0 localhost:30500/bridge-service:1.0.0
 # Push
-sudo docker push localhost:30500/provisioning-service:1.0.0
+sudo docker push localhost:30500/bridge-service:1.0.0
+# If docker client HTTPS error is happening
+mkdir -p ~/.docker
+echo -n 'sentinel:<password>' | base64
+cat > ~/.docker/config.json << 'EOF'
+{
+  "auths": {
+    "localhost:30500": {
+      "auth": "<hasil_base64_tadi>"
+    }
+  }
+}
+EOF
+sudo mkdir -p /root/.docker
+sudo cp ~/.docker/config.json /root/.docker/config.json
+# ========================
 
 sudo apt install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p /etc/apt/keyrings
@@ -65,6 +81,19 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.11.2/dep
 # Unset default of using local-path if have been used previously
 kubectl patch storageclass local-path -p \
   '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+
+#Blacklist sd devices di semua node Longhorn — ini known issue Longhorn + multipathd dan solusi permanennya memang di sini.
+sudo tee /etc/multipath.conf << 'EOF'
+defaults {
+    user_friendly_names yes
+}
+
+blacklist {
+    devnode "^sd[a-z]"
+}
+EOF
+sudo systemctl restart multipathd
+sudo multipath -F
 
 # MetalLB
 kubectl get configmap kube-proxy -n kube-system -o yaml | sed -e "s/strictARP: false/strictARP: true/" | kubectl apply -f - -n kube-system
@@ -98,3 +127,11 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 # Create join command
 kubeadm token create --print-join-command
+
+#Longhorn volume mount error ============================
+# Cek apakah multipathd yang menahan
+sudo fuser -v /dev/sdc  # atau device yang relevan
+sudo multipath -ll
+#Kalau ada mpath entry, langsung:
+bashsudo multipath -F
+kubectl delete pod -n sentinel-infra -l app=<nama-app>

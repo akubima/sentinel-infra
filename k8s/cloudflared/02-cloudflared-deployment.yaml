@@ -10,6 +10,8 @@ spec:
       pod: cloudflared
   template:
     metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "cloudflared-secret"
       labels:
         pod: cloudflared
     spec:
