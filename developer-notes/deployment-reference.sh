@@ -35,11 +35,11 @@ sudo ctr plugins ls | grep cri
 # # Local runner example
 sudo apt install docker.io -y
 # Build
-sudo docker build -t provisioning-service:1.0.0  provisioning-service/
+sudo docker build -t bridge-service:1.0.0  bridge-service/
 # Tag ke local registry
-sudo docker tag provisioning-service:1.0.0 localhost:30500/provisioning-service:1.0.0
+sudo docker tag bridge-service:1.0.0 localhost:30500/bridge-service:1.0.0
 # Push
-sudo docker push localhost:30500/provisioning-service:1.0.0
+sudo docker push localhost:30500/bridge-service:1.0.0
 # If docker client HTTPS error is happening
 mkdir -p ~/.docker
 echo -n 'sentinel:<password>' | base64

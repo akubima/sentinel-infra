@@ -160,10 +160,10 @@ spec:
 
                   # === AUTOMATED INITIAL SETUP CONFIGURATION FOR SENTINEL WORKSPACE ===
                   if [ -n "$ROOT_TOKEN" ]; then
-                    SETUP_CHECK=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets list -format=json 2>/dev/null | jq -r '."sentinel-root-ca/"' 2>/dev/null)
+                    SETUP_CHECK=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets list -format=json 2>/dev/null | jq -r '."sentinel-kv/"' 2>/dev/null)
                     if [ "$SETUP_CHECK" = "null" ] || [ -z "$SETUP_CHECK" ]; then
                       echo "----------------------------------------------------------------------"
-                      echo "Sentinel PKI and Auth Roles not detected. Initiating deployment setup..."
+                      echo "Sentinel Auth Roles not detected. Initiating deployment setup..."
 
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault auth enable kubernetes || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN sh -c '
@@ -195,77 +195,19 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_PROD" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_STG" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_DEV" || true
-
-                      # 1. Setup Root CA
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-root-ca pki || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets tune -max-lease-ttl=175200h sentinel-root-ca
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -field=certificate sentinel-root-ca/root/generate/internal \
-                        common_name="Sentinel Root CA" organization="Universitas Gadjah Mada" ou="Sentinel" locality="Yogyakarta" province="Daerah Istimewa Yogyakarta" country="ID" ttl=175200h > /tmp/root_ca.crt
-
-                      # 2. Setup Intermediate CA
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-pki pki || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets tune -max-lease-ttl=87600h sentinel-pki
-
-                      # Perbaikan Fatal: Menghasilkan CSR dari Intermediate Engine
-                      CSR_OUT=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -format=json sentinel-pki/intermediate/generate/internal \
-                        common_name="Sentinel Intermediate CA" organization="Universitas Gadjah Mada" ou="Sentinel" locality="Yogyakarta" province="Daerah Istimewa Yogyakarta" country="ID")
-                      CSR=$(echo "$CSR_OUT" | jq -r '.data.csr')
-
-                      # Perbaikan Utama: Ekstrak sertifikat hasil sign DAN gabungkan Root CA agar membentuk Rantai Valid (Chain)
-                      SIGN_OUT=$(echo "$CSR" | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write -format=json sentinel-root-ca/root/sign-intermediate csr=- format=pem_bundle ttl="87600h")
-                      
-                      INT_CERT=$(echo "$SIGN_OUT" | jq -r '.data.certificate')
-                      
-                      kubectl exec -n vault vault-0 -- sh -c "
-                        echo '$INT_CERT' > /tmp/int_cert.crt
-                        cat /tmp/root_ca.crt >> /tmp/int_cert.crt
-                        env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/intermediate/set-signed certificate=@/tmp/int_cert.crt
-                      "
-
-                      # Konfigurasi URL Distribusi yang Valid
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/config/urls issuing_certificates="http://vault-service.vault.svc.cluster.local:8200/v1/sentinel-pki/ca_chain,http://10.33.102.168:8200/v1/sentinel-pki/ca_chain,https://vault-sentinel-tedi.bima.dev/v1/sentinel-pki/ca_chain" \
-                        crl_distribution_points="http://vault-service.vault.svc.cluster.local:8200/v1/sentinel-pki/crl,http://10.33.102.168:8200/v1/sentinel-pki/crl,https://vault-sentinel-tedi.bima.dev/v1/sentinel-pki/crl"
-
-                      # 3. Create PKI Roles
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/roles/infrastructure-prod \
-                        allowed_domains="bima.dev,svc.cluster.local,localhost" \
-                        allow_any_name=true \
-                        allow_subdomains=true \
-                        allow_bare_domains=true \
-                        allow_localhost=true \
-                        allow_ip_sans=true \
-                        enforce_hostnames=false \
-                        organization="Universitas Gadjah Mada" \
-                        ou="Sentinel" \
-                        locality="Yogyakarta" \
-                        province="Daerah Istimewa Yogyakarta" \
-                        country="ID" \
-                        require_cn=false \
-                        server_flag=true \
-                        client_flag=true \
-                        max_ttl="8760h"
-
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write sentinel-pki/roles/iot-node-prod \
-                        allowed_domains="local" \
-                        allow_any_name=true \
-                        enforce_hostnames=false \
-                        organization="Universitas Gadjah Mada" \
-                        ou="Sentinel" \
-                        locality="Yogyakarta" \
-                        province="Daerah Istimewa Yogyakarta" \
-                        country="ID" \
-                        server_flag=false \
-                        client_flag=true \
-                        max_ttl="8760h"
+                  
+                      BRIDGE_API_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      BRIDGE_API_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      BRIDGE_API_KEY_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                  
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/bridge api_key="$BRIDGE_API_KEY_PROD" cert="" key="" ca="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/bridge api_key="$BRIDGE_API_KEY_STG" cert="" key="" ca="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/bridge api_key="$BRIDGE_API_KEY_DEV" cert="" key="" ca="" || true
 
                       # 4. Create Policies (Fed seamlessly via stdin to bypass multi-line quote restrictions)
-                      echo 'path "sentinel-pki/sign/infrastructure-prod" { capabilities = ["create", "update"] } path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*"{ capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write emqx-policy -
-                      echo 'path "sentinel-pki/sign/iot-node-prod" { capabilities = ["create", "update"] } path "sentinel-pki/issue/iot-node-prod" { capabilities = ["create", "update"] } path "sentinel-pki/sign/infrastructure-prod" { capabilities = ["create", "update"] } path "sentinel-pki/issue/infrastructure-prod" { capabilities = ["create", "update"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write provisioning-service-policy -
                       echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write kv-prod-policy -
 
                       # 5. Create Kubernetes Auth Engine Roles
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/emqx-role bound_service_account_names=emqx-sa bound_service_account_namespaces=sentinel-infra policies=emqx-policy ttl=1h
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/provisioning-service-role bound_service_account_names=provisioning-service-sa bound_service_account_namespaces=sentinel-infra policies=provisioning-service-policy ttl=1h
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system policies=kv-prod-policy ttl=1h
 
                       echo "Automated Deployment Setup completed successfully."
