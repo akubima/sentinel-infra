@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: postgres
   namespace: sentinel-infra
+  annotations:
+    secret.reloader.stakater.com/reload: "postgres-secret"
 spec:
   instances: 1
   imageName: ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5
