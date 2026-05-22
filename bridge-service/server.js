@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const mqtt = require('mqtt');
+const crypto = require('crypto'); // Added to generate unique client IDs
 
 const app = express();
 app.use(express.json());
@@ -55,16 +56,19 @@ app.get('/verify/:node_id', apiKeyAuth, async (req, res) => {
 });
 
 // ==== MQTT Bridge
+// Generate a random ID for this specific replica instance
+const instanceId = crypto.randomBytes(4).toString('hex');
+
 const mqttClient = mqtt.connect(`mqtts://${AWS_IOT_ENDPOINT}:8883`, {
     cert: process.env.BRIDGE_CERT,
     key: process.env.BRIDGE_KEY,
     ca: process.env.BRIDGE_CA,
-    clientId: 'sentinel-bridge',
+    clientId: `sentinel-bridge-${instanceId}`, // Unique ID per replica
     clean: true,
 });
 
 mqttClient.on('connect', () => {
-    console.log('Bridge connected to AWS IoT Core');
+    console.log(`Bridge (ID: ${instanceId}) connected to AWS IoT Core`);
     mqttClient.subscribe(AWS_IOT_TOPIC, (err) => {
         if (err) console.error('Subscribe error:', err.message);
         else console.log(`Subscribed to ${AWS_IOT_TOPIC}`);
@@ -93,14 +97,14 @@ mqttClient.on('message', async (topic, payload) => {
             [deviceId, JSON.stringify(data)]
         );
 
-        console.log(`Telemetry saved for ${nodeId}`);
+        console.log(`Telemetry saved for ${nodeId} by instance ${instanceId}`);
     } catch (err) {
         console.error('Message handling error:', err.message);
     }
 });
 
 mqttClient.on('error', (err) => {
-    console.error('MQTT error:', err.message);
+    console.error(`MQTT error on instance ${instanceId}:`, err.message);
 });
 
 app.listen(PORT, () => {
