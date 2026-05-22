@@ -93,5 +93,6 @@ spec:
     shared_preload_libraries:
       - "timescaledb"
   storage:
-    size: 20Gi
+    resizeInUseVolumes: true
+    size: 10Gi
     storageClass: longhorn-retained
