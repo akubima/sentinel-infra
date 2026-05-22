@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bridge
+  namespace: sentinel-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bridge
+  template:
+    metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-secret,bridge-secret"
+      labels:
+        app: bridge
+    spec:
+      imagePullSecrets:
+        - name: registry-secret
+      containers:
+        - name: bridge
+          image: localhost:30500/bridge-service:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          resources:
+            requests:
+              cpu: 150m
+              memory: 192Mi
+            limits:
+              cpu: 400m
+              memory: 384Mi
+          env:
+            - name: PORT
+              value: "3001"
+            - name: AWS_IOT_ENDPOINT
+              value: "a3v25q6nphrh78-ats.iot.ap-southeast-1.amazonaws.com"
+            - name: AWS_IOT_TOPIC
+              value: "sentinel/device/#"
+            - name: PGHOST
+              value: "postgres-r.sentinel-infra.svc.cluster.local"
+            - name: PGDATABASE
+              value: "sentinel"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: BRIDGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-secret
+                  key: BRIDGE_API_KEY
+            - name: BRIDGE_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-secret
+                  key: BRIDGE_CERT
+            - name: BRIDGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-secret
+                  key: BRIDGE_KEY
+            - name: BRIDGE_CA
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-secret
+                  key: BRIDGE_CA
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
