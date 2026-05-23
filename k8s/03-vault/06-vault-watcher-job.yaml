@@ -116,9 +116,9 @@ spec:
                       JOINED=false
                       for PEER in $PODS; do
                         if [ "$PEER" = "$POD_NAME" ]; then continue; fi
-                        echo "Trying to join raft through http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 ..."
+                        echo "Trying to join raft through https://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 ..."
                         JOIN_RESULT=$(kubectl exec -n vault $POD_NAME -- vault operator raft join \
-                          http://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 2>&1)
+                          https://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 2>&1)
                         if echo "$JOIN_RESULT" | grep -qi "successfully\|joined"; then
                           echo "Successfully join raft through $PEER."
                           JOINED=true
@@ -183,23 +183,31 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" || true
+
+                      AUTHENTIK_SECRET_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      AUTHENTIK_SECRET_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      AUTHENTIK_SECRET_KEY_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/authentik secret_key="$AUTHENTIK_SECRET_KEY_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/authentik secret_key="$AUTHENTIK_SECRET_KEY_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/authentik secret_key="$AUTHENTIK_SECRET_KEY_DEV" || true
                       
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/cloudflared token="" || true
-                  
+
                       REGISTRYPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
-                  
+
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_PROD" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_STG" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_DEV" || true
-                  
+
                       BRIDGE_API_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       BRIDGE_API_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       BRIDGE_API_KEY_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
-                  
+
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/bridge api_key="$BRIDGE_API_KEY_PROD" cert="" key="" ca="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/bridge api_key="$BRIDGE_API_KEY_STG" cert="" key="" ca="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/bridge api_key="$BRIDGE_API_KEY_DEV" cert="" key="" ca="" || true

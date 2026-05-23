@@ -60,7 +60,7 @@ spec:
             - name: VAULT_CLUSTER_ADDR
               value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8201"
             - name: VAULT_API_ADDR
-              value: "http://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
+              value: "https://$(POD_NAME).vault-internal-service.vault.svc.cluster.local:8200"
           securityContext:
             capabilities:
               add:
