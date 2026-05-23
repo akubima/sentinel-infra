@@ -1,0 +1,26 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-selfsigned-issuer
+  namespace: vault
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-cert
+  namespace: vault
+spec:
+  secretName: vault-cert-secret
+  issuerRef:
+    name: vault-selfsigned-issuer
+  dnsNames:
+    - vault-service.vault.svc.cluster.local
+    - vault-internal-service.vault.svc.cluster.local
+    - "*.vault-internal-service.vault.svc.cluster.local"
+  ipAddresses:
+    - 127.0.0.1
+    - 10.33.36.253
+    - 10.33.107.250
+    - 10.33.102.168
