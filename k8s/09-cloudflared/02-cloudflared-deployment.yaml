@@ -23,6 +23,7 @@ spec:
       containers:
         - image: cloudflare/cloudflared:2026.5.0
           name: cloudflared
+          imagePullPolicy: IfNotPresent
           env:
             # Defines an environment variable for the tunnel token.
             - name: TUNNEL_TOKEN
