@@ -48,7 +48,9 @@ spec:
             - "vault server -config=/vault/config/vault.json"
           env:
             - name: VAULT_ADDR
-              value: "http://127.0.0.1:8200"
+              value: "https://127.0.0.1:8200"
+            - name: VAULT_CACERT
+              value: "/vault/tls/ca.crt"
             - name: SKIP_CHOWN
               value: "true"
             - name: POD_NAME
@@ -68,10 +70,16 @@ spec:
               mountPath: /vault/file
             - name: vault-config
               mountPath: /vault/config
+            - name: vault-cert-storage
+              mountPath: /vault/tls
+              readOnly: true
       volumes:
         - name: vault-config
           configMap:
             name: vault-config
+        - name: vault-cert-storage
+          secret:
+            secretName: vault-cert-secret
   volumeClaimTemplates:
     - metadata:
         name: vault-data-storage
