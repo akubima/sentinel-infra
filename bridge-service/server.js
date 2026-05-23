@@ -1,7 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const mqtt = require('mqtt');
-const crypto = require('crypto'); // Added to generate unique client IDs
+const crypto = require('crypto')
 
 const app = express();
 app.use(express.json());
@@ -60,11 +60,12 @@ app.get('/verify/:node_id', apiKeyAuth, async (req, res) => {
 const instanceId = crypto.randomBytes(4).toString('hex');
 
 const mqttClient = mqtt.connect(`mqtts://${AWS_IOT_ENDPOINT}:8883`, {
-    cert: process.env.BRIDGE_CERT,
-    key: process.env.BRIDGE_KEY,
-    ca: process.env.BRIDGE_CA,
-    clientId: `sentinel-bridge-${instanceId}`, // Unique ID per replica
-    clean: true,
+    cert: Buffer.from(process.env.BRIDGE_CERT.replace(/\\n/g, '\n')),
+    key: Buffer.from(process.env.BRIDGE_KEY.replace(/\\n/g, '\n')),
+    ca: Buffer.from(process.env.BRIDGE_CA.replace(/\\n/g, '\n')),
+    clientId: `sentinel-bridge-${instanceId}`,
+    connectTimeout: 10000,
+    reconnectPeriod: 5000,
 });
 
 mqttClient.on('connect', () => {
@@ -104,7 +105,15 @@ mqttClient.on('message', async (topic, payload) => {
 });
 
 mqttClient.on('error', (err) => {
-    console.error(`MQTT error on instance ${instanceId}:`, err.message);
+    console.error(`MQTT error [${instanceId}]:`, err.message, err.code);
+});
+
+mqttClient.on('reconnect', () => {
+    console.log(`[Instance: ${instanceId}] Trying to reconnect to AWS IoT...`);
+});
+
+mqttClient.on('offline', () => {
+    console.log(`[Instance: ${instanceId}] MQTT Client is offline/network dropped`);
 });
 
 app.listen(PORT, () => {
