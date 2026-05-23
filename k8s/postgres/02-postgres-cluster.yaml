@@ -42,23 +42,25 @@ spec:
           BEGIN
           -- Menggunakan fungsi bawaan crypto v17 yang dijamin aman tanpa dependensi pgcrypto lama
             bytes = gen_random_bytes(11);
-          
+
             FOR i IN REVERSE 9..0 LOOP
             res = res || SUBSTR(encoding, ((time_ms >> (i * 5)) & 31)::INTEGER + 1, 1);
             END LOOP;
-          
+
             FOR i IN 0..15 LOOP
             val = (get_byte(bytes, (i * 5) / 8) << 8) | get_byte(bytes, ((i * 5) / 8) + 1);
             res = res || SUBSTR(encoding, ((val >> (11 - (i * 5) % 8)) & 31)::INTEGER + 1, 1);
             END LOOP;
-          
+
             RETURN res;
           END;
           $_$ LANGUAGE plpgsql VOLATILE;
         - ALTER FUNCTION generate_ulid() OWNER TO sentinel;
+        # Buat database pendukung untuk Grafana dengan owner sentinel agar tidak ada kendala izin skema public di pg15+
+        - CREATE DATABASE grafana OWNER sentinel;
 
-        # Buat database pendukung untuk Grafana
-        - CREATE DATABASE grafana;
+        # Buat database untuk authentik dengan owner sentinel
+        - CREATE DATABASE authentik OWNER sentinel;
 
         # Buat tabel devices dan set pemiliknya ke sentinel
         - |
@@ -73,7 +75,6 @@ spec:
               updated_at TIMESTAMP NULL DEFAULT NULL
           );
         - ALTER TABLE devices OWNER TO sentinel;
-
         # Masukkan baris data contoh awal
         - |
           INSERT INTO devices (node_id, name, location, latitude, longitude)
@@ -87,7 +88,6 @@ spec:
               metrics JSONB       NOT NULL
           );
         - ALTER TABLE device_telemetry OWNER TO sentinel;
-
         # Nyalakan fitur hypertable TimescaleDB bawaan
         - SELECT create_hypertable('device_telemetry', 'time');
         - CREATE INDEX idx_id_time ON device_telemetry(id, time DESC);

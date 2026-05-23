@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-config
+  namespace: sso
+data:
+  AUTHENTIK_POSTGRESQL__HOST: "postgres-rw.sentinel-infra.svc.cluster.local"
+  AUTHENTIK_POSTGRESQL__PORT: "5432"
+  AUTHENTIK_POSTGRESQL__NAME: "authentik"
+
+  AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+  AUTHENTIK_LOG_LEVEL: "info"
+  AUTHENTIK_DISABLE_UPDATE_CHECK: "false"
+  AUTHENTIK_COOKIE_DOMAIN: "bima.dev"
