@@ -34,6 +34,7 @@ spec:
             httpGet:
               path: /v1/sys/health?standbyok=true
               port: 8200
+              scheme: HTTPS
             initialDelaySeconds: 10
             periodSeconds: 10
           resources:
