@@ -168,13 +168,13 @@ spec:
 
                   # === AUTOMATED INITIAL SETUP CONFIGURATION FOR SENTINEL WORKSPACE ===
                   if [ -n "$ROOT_TOKEN" ]; then
-                    SETUP_CHECK=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets list -format=json 2>/dev/null | jq -r '."sentinel-kv/"' 2>/dev/null)
+                    SETUP_CHECK=$(kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault secrets list -format=json 2>/dev/null | jq -r '."sentinel-kv/"' 2>/dev/null)
                     if [ "$SETUP_CHECK" = "null" ] || [ -z "$SETUP_CHECK" ]; then
-                      echo "----------------------------------------------------------------------"
+                      echo "=================================================="
                       echo "Sentinel Auth Roles not detected. Initiating deployment setup..."
 
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault auth enable kubernetes || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN sh -c '
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault auth enable kubernetes || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  sh -c '
                         vault write auth/kubernetes/config \
                         kubernetes_host="https://kubernetes.default.svc:443" \
                         kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
@@ -182,52 +182,52 @@ spec:
                         disable_local_ca_jwt=false
                       '
 
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault secrets enable -path=sentinel-kv kv-v2 || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault secrets enable -path=sentinel-kv kv-v2 || true
                       
                       PGPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       PGPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       PGPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" || true
 
                       AUTHENTIK_SECRET_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       AUTHENTIK_SECRET_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       AUTHENTIK_SECRET_KEY_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
 
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/authentik secret_key="$AUTHENTIK_SECRET_KEY_PROD" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/authentik secret_key="$AUTHENTIK_SECRET_KEY_STG" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/authentik secret_key="$AUTHENTIK_SECRET_KEY_DEV" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/authentik secret_key="$AUTHENTIK_SECRET_KEY_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/authentik secret_key="$AUTHENTIK_SECRET_KEY_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/authentik secret_key="$AUTHENTIK_SECRET_KEY_DEV" || true
                       
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/cloudflared token="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/cloudflared token="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/cloudflared token="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/cloudflared token="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/cloudflared token="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/cloudflared token="" || true
 
                       REGISTRYPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
 
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_PROD" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_STG" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_DEV" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/registry server_url="localhost:30500" username="sentinel" password="$REGISTRYPASS_DEV" || true
 
                       BRIDGE_API_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       BRIDGE_API_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       BRIDGE_API_KEY_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
 
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/prod/bridge api_key="$BRIDGE_API_KEY_PROD" cert="" key="" ca="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/stg/bridge api_key="$BRIDGE_API_KEY_STG" cert="" key="" ca="" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault kv put sentinel-kv/dev/bridge api_key="$BRIDGE_API_KEY_DEV" cert="" key="" ca="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/bridge api_key="$BRIDGE_API_KEY_PROD" cert="" key="" ca="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/bridge api_key="$BRIDGE_API_KEY_STG" cert="" key="" ca="" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/bridge api_key="$BRIDGE_API_KEY_DEV" cert="" key="" ca="" || true
 
                       # 4. Create Policies (Fed seamlessly via stdin to bypass multi-line quote restrictions)
-                      echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault policy write kv-prod-policy -
+                      echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault policy write kv-prod-policy -
 
                       # 5. Create Kubernetes Auth Engine Roles
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system,sso policies=kv-prod-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system,sso policies=kv-prod-policy ttl=1h
 
                       echo "Automated Deployment Setup completed successfully."
-                      echo "----------------------------------------------------------------------"
+                      echo "=================================================="
                     fi
                   fi
                   # === AUTOMATED INITIAL SETUP CONFIGURATION END ===
@@ -236,13 +236,13 @@ spec:
                   echo "Checking for ghost peers in raft (stale peer)..."
                   K8S_PODS=$(kubectl get pods -n vault -l app=vault --no-headers -o custom-columns=":metadata.name")
 
-                  kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft list-peers -format=json" 2>/dev/null | jq -r '.data.config.servers[] | "\(.node_id) \(.address)"' 2>/dev/null | while read -r NODE_ID ADDRESS; do
+                  kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault operator raft list-peers -format=json" 2>/dev/null | jq -r '.data.config.servers[] | "\(.node_id) \(.address)"' 2>/dev/null | while read -r NODE_ID ADDRESS; do
                       [ -z "$NODE_ID" ] && continue
                       POD_NAME_FROM_RAFT=$(echo "$ADDRESS" | cut -d'.' -f1)
                       if ! echo "$K8S_PODS" | grep -q "^$POD_NAME_FROM_RAFT$"; then
                         echo "Detected ghost peer: $NODE_ID (pod has been deleted from k8s)."
                         echo "Kicking ghost peer $NODE_ID from raft..."
-                        kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN vault operator raft remove-peer $NODE_ID"
+                        kubectl exec -n vault vault-0 -- sh -c "VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault operator raft remove-peer $NODE_ID"
                       else
                         echo "Pod $POD_NAME_FROM_RAFT (ID: $NODE_ID) is active."
                       fi

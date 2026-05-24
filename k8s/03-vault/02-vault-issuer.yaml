@@ -12,7 +12,6 @@ metadata:
   name: vault-cert
   namespace: vault
 spec:
-  isCA: true
   secretName: vault-cert-secret
   issuerRef:
     name: vault-selfsigned-issuer
