@@ -81,11 +81,3 @@ spec:
             limits:
               cpu: 500m
               memory: 768Mi
-          volumeMounts:
-            - name: grafana-config
-              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
-              subPath: datasources.yaml
-      volumes:
-        - name: grafana-config
-          configMap:
-            name: grafana-config

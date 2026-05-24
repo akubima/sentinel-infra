@@ -156,7 +156,7 @@ spec:
                   done
 
                   # Replicate vault-cert-secret to other namespaces for ExternalSecrets trust verification
-                  for NS in sentinel-infra kube-system sso; do
+                  for NS in sentinel-infra kube-system; do
                     echo "Replicating vault-cert-secret to $NS namespace..."
                     kubectl get secret vault-cert-secret -n vault -o json 2>/dev/null | \
                       jq '.metadata.namespace = "'$NS'" | del(.metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.ownerReferences)' 2>/dev/null | \
@@ -233,7 +233,7 @@ spec:
                       echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault policy write kv-prod-policy -
 
                       # 5. Create Kubernetes Auth Engine Roles
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system,sso policies=kv-prod-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system policies=kv-prod-policy ttl=1h
 
                       echo "Automated Deployment Setup completed successfully."
                       echo "=================================================="
