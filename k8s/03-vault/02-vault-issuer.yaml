@@ -1,10 +1,23 @@
 apiVersion: cert-manager.io/v1
-kind: Issuer
+kind: Certificate
 metadata:
-  name: vault-selfsigned-issuer
+  name: vault-ca
   namespace: vault
 spec:
-  selfSigned: {}
+  isCA: true
+  secretName: vault-ca-secret
+  commonName: "Vault Certificate Authority"
+  issuerRef:
+    name: vault-selfsigned-issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-ca-issuer
+  namespace: vault
+spec:
+  ca:
+    secretName: vault-ca-secret
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -14,7 +27,7 @@ metadata:
 spec:
   secretName: vault-cert-secret
   issuerRef:
-    name: vault-selfsigned-issuer
+    name: vault-ca-issuer
   dnsNames:
     - vault-service.vault.svc.cluster.local
     - vault-internal-service.vault.svc.cluster.local
