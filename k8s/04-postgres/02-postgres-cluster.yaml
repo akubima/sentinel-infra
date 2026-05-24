@@ -62,9 +62,6 @@ spec:
         # Buat database pendukung untuk Grafana dengan owner sentinel agar tidak ada kendala izin skema public di pg15+
         - CREATE DATABASE grafana OWNER sentinel;
 
-        # Buat database untuk logto dengan owner sentinel
-        - CREATE DATABASE logto OWNER sentinel;
-
         # Buat tabel devices dan set pemiliknya ke sentinel
         - |
           CREATE TABLE devices (
