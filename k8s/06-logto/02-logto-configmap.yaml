@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logto-config
+  namespace: sso
+data:
+  ENDPOINT: "https://sso-sentinel-tedi.bima.dev"
+  ADMIN_ENDPOINT: "https://admin-sso-sentinel-tedi.bima.dev"
