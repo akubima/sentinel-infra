@@ -27,10 +27,8 @@ spec:
       server: "https://vault-service.vault.svc.cluster.local:8200"
       path: "sentinel-kv"
       version: "v2"
-      caProvider:
-        type: Secret
-        name: vault-cert-secret
-        key: ca.crt
+      tls:
+        insecure: true
       auth:
         kubernetes:
           mountPath: "kubernetes"
@@ -50,10 +48,8 @@ spec:
       server: "https://vault-service.vault.svc.cluster.local:8200"
       path: "sentinel-kv"
       version: "v2"
-      caProvider:
-        type: Secret
-        name: vault-cert-secret
-        key: ca.crt
+      tls:
+        insecure: true
       auth:
         kubernetes:
           mountPath: "kubernetes"
@@ -73,10 +69,8 @@ spec:
       server: "https://vault-service.vault.svc.cluster.local:8200"
       path: "sentinel-kv"
       version: "v2"
-      caProvider:
-        type: Secret
-        name: vault-cert-secret
-        key: ca.crt
+      tls:
+        insecure: true
       auth:
         kubernetes:
           mountPath: "kubernetes"
