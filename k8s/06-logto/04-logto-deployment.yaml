@@ -41,9 +41,9 @@ spec:
         - name: logto
           image: svhd/logto:1.39.0
           ports:
-            - containerPort: 3001
+            - containerPort: 3003
               name: http-api
-            - containerPort: 3002
+            - containerPort: 3004
               name: http-admin
           resources:
             requests:
@@ -53,6 +53,10 @@ spec:
               cpu: 500m
               memory: 512Mi
           env:
+            - name: PORT
+              value: "3003"
+            - name: ADMIN_PORT
+              value: "3004"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
@@ -85,12 +89,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /api/status
-              port: 3001
+              port: 3003
             initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/status
-              port: 3001
+              port: 3003
             initialDelaySeconds: 30
             periodSeconds: 10

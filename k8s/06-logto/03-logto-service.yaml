@@ -6,12 +6,12 @@ metadata:
 spec:
   ports:
     - name: http-api
-      port: 3001
-      targetPort: 3001
+      port: 3003
+      targetPort: 3003
       protocol: TCP
     - name: http-admin
-      port: 3002
-      targetPort: 3002
+      port: 3004
+      targetPort: 3004
       protocol: TCP
   selector:
     app: logto
