@@ -205,6 +205,14 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/cloudflared token="" || true
 
+                      LOGTO_KEK_DEV=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+                      LOGTO_KEK_STG=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+                      LOGTO_KEK_PROD=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/logto secret_vault_kek="$LOGTO_KEK_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/logto secret_vault_kek="$LOGTO_KEK_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/logto secret_vault_kek="$LOGTO_KEK_DEV" || true
+
                       REGISTRYPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)

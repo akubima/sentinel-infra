@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: logto-db-migration
+  namespace: sso
+spec:
+  template:
+    metadata:
+      labels:
+        app: logto-db-migration
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command: ["sh", "-c"]
+          args:
+            - |
+              until pg_isready -h postgres-rw.sentinel-infra.svc.cluster.local -p 5432; do
+                echo "Waiting for postgres-rw database to be ready...";
+                sleep 2;
+              done
+      containers:
+        - name: db-migration-and-seed
+          image: svhd/logto:1.39.0
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Applying seed or database alterations..."
+              npx @logto/cli db alteration deploy --db-url "$DB_URL" || npx @logto/cli db seed --swe --db-url "$DB_URL"
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: DB_URL
+              value: postgres://$(DB_USER):$(DB_PASSWORD)@postgres-rw.sentinel-infra.svc.cluster.local:5432/logto

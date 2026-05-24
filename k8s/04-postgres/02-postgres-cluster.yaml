@@ -62,6 +62,9 @@ spec:
         # Buat database untuk authentik dengan owner sentinel
         - CREATE DATABASE authentik OWNER sentinel;
 
+        # Buat database untuk logto dengan owner sentinel
+        - CREATE DATABASE logto OWNER sentinel;
+
         # Buat tabel devices dan set pemiliknya ke sentinel
         - |
           CREATE TABLE devices (
