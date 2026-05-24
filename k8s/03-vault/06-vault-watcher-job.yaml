@@ -118,6 +118,7 @@ spec:
                         if [ "$PEER" = "$POD_NAME" ]; then continue; fi
                         echo "Trying to join raft through https://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 ..."
                         JOIN_RESULT=$(kubectl exec -n vault $POD_NAME -- vault operator raft join \
+                          -leader-ca-cert=@/vault/tls/ca.crt \
                           https://${PEER}.vault-internal-service.vault.svc.cluster.local:8200 2>&1)
                         if echo "$JOIN_RESULT" | grep -qi "successfully\|joined"; then
                           echo "Successfully join raft through $PEER."
