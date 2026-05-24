@@ -154,6 +154,14 @@ spec:
                     fi
                   done
 
+                  # Replicate vault-cert-secret to other namespaces for ExternalSecrets trust verification
+                  for NS in sentinel-infra kube-system sso; do
+                    echo "Replicating vault-cert-secret to $NS namespace..."
+                    kubectl get secret vault-cert-secret -n vault -o json 2>/dev/null | \
+                      jq '.metadata.namespace = "'$NS'" | del(.metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.ownerReferences)' 2>/dev/null | \
+                      kubectl apply -f - --force 2>/dev/null || true
+                  done
+
                   if [ -z "$ROOT_TOKEN" ] && [ -n "$SECRET_EXISTS" ]; then
                     ROOT_TOKEN=$(kubectl get secret vault-secret -n vault -o jsonpath='{.data.root-token}' | base64 -d 2>/dev/null)
                   fi
