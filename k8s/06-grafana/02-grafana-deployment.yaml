@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       annotations:
-        secret.reloader.stakater.com/reload: "postgres-secret"
+        secret.reloader.stakater.com/reload: "postgres-grafana-rw-secret,postgres-grafana-ro-secret"
       labels:
         app: grafana
     spec:
@@ -33,22 +33,22 @@ spec:
             - name: GF_DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
+                  name: postgres-grafana-rw-secret
+                  key: username
             - name: GF_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
+                  name: postgres-grafana-rw-secret
+                  key: password
             - name: DATA_DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
+                  name: postgres-grafana-ro-secret
+                  key: username
             - name: DATA_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: postgres-grafana-ro-secret
                   key: password
           ports:
             - containerPort: 3000
@@ -79,11 +79,3 @@ spec:
             limits:
               cpu: 500m
               memory: 768Mi
-          volumeMounts:
-            - name: grafana-config
-              mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
-              subPath: datasources.yaml
-      volumes:
-        - name: grafana-config
-          configMap:
-            name: grafana-config

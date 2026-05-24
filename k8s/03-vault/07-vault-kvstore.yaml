@@ -10,12 +10,6 @@ metadata:
   name: kv-sa
   namespace: kube-system
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kv-sa
-  namespace: sso
----
 apiVersion: external-secrets.io/v1
 kind: SecretStore
 metadata:
@@ -61,26 +55,3 @@ spec:
           serviceAccountRef:
             name: "kv-sa"
             namespace: kube-system
----
-apiVersion: external-secrets.io/v1
-kind: SecretStore
-metadata:
-  name: kv
-  namespace: sso
-spec:
-  provider:
-    vault:
-      server: "https://vault-service.vault.svc.cluster.local:8200"
-      path: "sentinel-kv"
-      version: "v2"
-      caProvider:
-        type: Secret
-        name: vault-cert-secret
-        key: ca.crt
-      auth:
-        kubernetes:
-          mountPath: "kubernetes"
-          role: "kv-role"
-          serviceAccountRef:
-            name: "kv-sa"
-            namespace: sso

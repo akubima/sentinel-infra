@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       annotations:
-        secret.reloader.stakater.com/reload: "postgres-secret,bridge-secret"
+        secret.reloader.stakater.com/reload: "postgres-bridge-rw-secret,bridge-secret"
       labels:
         app: bridge
     spec:
@@ -44,13 +44,13 @@ spec:
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
+                  name: postgres-bridge-rw-secret
+                  key: username
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
+                  name: postgres-bridge-rw-secret
+                  key: password
             - name: BRIDGE_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -156,7 +156,7 @@ spec:
                   done
 
                   # Replicate vault-cert-secret to other namespaces for ExternalSecrets trust verification
-                  for NS in sentinel-infra kube-system sso; do
+                  for NS in sentinel-infra kube-system; do
                     echo "Replicating vault-cert-secret to $NS namespace..."
                     kubectl get secret vault-cert-secret -n vault -o json 2>/dev/null | \
                       jq '.metadata.namespace = "'$NS'" | del(.metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.ownerReferences)' 2>/dev/null | \
@@ -188,10 +188,22 @@ spec:
                       PGPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       PGPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       PGPASS_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+                      GRAFANA_RW_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      GRAFANA_RW_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      GRAFANA_RW_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+                      GRAFANA_RO_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      GRAFANA_RO_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      GRAFANA_RO_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+                      BRIDGE_RW_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      BRIDGE_RW_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+                      BRIDGE_RW_PROD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/postgres user="sentinel" password="$PGPASS_PROD" grafana_rw_user="grafana-rw" grafana_rw_password="$GRAFANA_RW_PROD" grafana_ro_user="grafana-ro" grafana_ro_password="$GRAFANA_RO_PROD" bridge_rw_user="bridge-rw" bridge_rw_password="$BRIDGE_RW_PROD" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/postgres user="sentinel" password="$PGPASS_STG" grafana_rw_user="grafana-rw" grafana_rw_password="$GRAFANA_RW_STG" grafana_ro_user="grafana-ro" grafana_ro_password="$GRAFANA_RO_STG" bridge_rw_user="bridge-rw" bridge_rw_password="$BRIDGE_RW_STG" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/postgres user="sentinel" password="$PGPASS_DEV" grafana_rw_user="grafana-rw" grafana_rw_password="$GRAFANA_RW_DEV" grafana_ro_user="grafana-ro" grafana_ro_password="$GRAFANA_RO_DEV" bridge_rw_user="bridge-rw" bridge_rw_password="$BRIDGE_RW_DEV" || true
 
                       AUTHENTIK_SECRET_KEY_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       AUTHENTIK_SECRET_KEY_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
@@ -204,14 +216,6 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/cloudflared token="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/cloudflared token="" || true
-
-                      LOGTO_KEK_DEV=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
-                      LOGTO_KEK_STG=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
-                      LOGTO_KEK_PROD=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
-
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/logto secret_vault_kek="$LOGTO_KEK_PROD" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/logto secret_vault_kek="$LOGTO_KEK_STG" || true
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/logto secret_vault_kek="$LOGTO_KEK_DEV" || true
 
                       REGISTRYPASS_DEV=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
                       REGISTRYPASS_STG=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
@@ -233,7 +237,7 @@ spec:
                       echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault policy write kv-prod-policy -
 
                       # 5. Create Kubernetes Auth Engine Roles
-                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system,sso policies=kv-prod-policy ttl=1h
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault write auth/kubernetes/role/kv-role bound_service_account_names=kv-sa bound_service_account_namespaces=sentinel-infra,kube-system policies=kv-prod-policy ttl=1h
 
                       echo "Automated Deployment Setup completed successfully."
                       echo "=================================================="
