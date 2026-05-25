@@ -225,6 +225,10 @@ spec:
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/bridge api_key="$BRIDGE_API_KEY_STG" cert="" key="" ca="" || true
                       kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/bridge api_key="$BRIDGE_API_KEY_DEV" cert="" key="" ca="" || true
 
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/prod/grafana smtp_user="placeholder-user" smtp_password="placeholder-password" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/stg/grafana smtp_user="placeholder-user" smtp_password="placeholder-password" || true
+                      kubectl exec -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault kv put sentinel-kv/dev/grafana smtp_user="placeholder-user" smtp_password="placeholder-password" || true
+
                       # 4. Create Policies (Fed seamlessly via stdin to bypass multi-line quote restrictions)
                       echo 'path "sentinel-kv/data/prod" { capabilities = ["read"] } path "sentinel-kv/data/prod/*" { capabilities = ["read"] }' | kubectl exec -i -n vault vault-0 -- env VAULT_TOKEN=$ROOT_TOKEN VAULT_SKIP_VERIFY=true  vault policy write kv-prod-policy -
 
