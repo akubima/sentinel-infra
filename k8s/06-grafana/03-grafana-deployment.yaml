@@ -24,6 +24,8 @@ spec:
           image: grafana/grafana:13.0.1
           imagePullPolicy: IfNotPresent
           env:
+            - name: GF_SERVER_ROOT_URL
+              value: https://grafana-sentinel-tedi.bima.dev
             - name: GF_DATABASE_TYPE
               value: postgres
             - name: GF_DATABASE_HOST
