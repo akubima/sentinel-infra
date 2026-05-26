@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "lemvr6l",
-    "generation": 12,
+    "generation": 13,
     "creationTimestamp": "2026-05-26T02:44:58Z",
     "labels": {},
     "annotations": {}
@@ -30,7 +30,7 @@
         }
       }
     ],
-    "cursorSync": "Off",
+    "cursorSync": "Tooltip",
     "editable": true,
     "elements": {
       "panel-10": {
@@ -2134,8 +2134,8 @@
       }
     },
     "links": [],
-    "liveNow": false,
-    "preload": false,
+    "liveNow": true,
+    "preload": true,
     "tags": [
       "sentinel",
       "sentinel:dashboard:public"
