@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "lemvr6l",
-    "generation": 13,
+    "generation": 14,
     "creationTimestamp": "2026-05-26T02:44:58Z",
     "labels": {},
     "annotations": {}
@@ -1298,7 +1298,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "SELECT \r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT DISTINCT ON (id) id, time\r\n  FROM device_telemetry\r\n  ORDER BY id, time DESC\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
