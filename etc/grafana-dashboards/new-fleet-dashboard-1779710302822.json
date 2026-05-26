@@ -1726,12 +1726,8 @@
                         "color": "green"
                       },
                       {
-                        "value": 15,
-                        "color": "yellow"
-                      },
-                      {
                         "value": 25,
-                        "color": "semi-dark-orange"
+                        "color": "yellow"
                       },
                       {
                         "value": 40,
@@ -2681,12 +2677,8 @@
                         "color": "green"
                       },
                       {
-                        "value": 15,
-                        "color": "yellow"
-                      },
-                      {
                         "value": 25,
-                        "color": "semi-dark-orange"
+                        "color": "yellow"
                       },
                       {
                         "value": 40,
