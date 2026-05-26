@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "le6n2tq",
-    "generation": 7,
-    "creationTimestamp": "2026-05-25T03:16:31Z",
+    "generation": 4,
+    "creationTimestamp": "2026-05-26T02:18:01Z",
     "labels": {},
     "annotations": {}
   },
@@ -54,7 +54,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  d.location AS \"Location\",\r\n  d.latitude || ', ' || d.longitude as \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  t.firmware_version AS \"Firmware Version\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n\r\n  t.time AS \"Last Seen\",\r\n\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n\r\n  d.node_id AS \"Linked Node ID\",\r\n  t.firmware_version AS \"Firmware Version\",\r\n\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
                         "sql": {
                           "columns": [
                             {
@@ -211,7 +211,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n  AVG((metrics->'telemetry'->>'tds')::numeric) AS \"TDS\",\r\n  AVG((metrics->'telemetry'->>'temperature')::numeric) AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
+                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n\r\n  AVG(NULLIF(metrics->'telemetry'->>'tds', '')::numeric) AS \"TDS\",\r\n\r\n  AVG(NULLIF(metrics->'telemetry'->>'temperature', '')::numeric) AS \"Temperature\"\r\n\r\nFROM device_telemetry\r\n\r\nWHERE $__timeFilter(time)\r\n\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -384,7 +384,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time);",
                         "sql": {
                           "columns": [
                             {
@@ -495,7 +495,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - ($node_offline_timeout || ' second')::interval\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - ($node_offline_timeout || ' second')::interval\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
                         "sql": {
                           "columns": [
                             {
@@ -752,7 +752,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "WITH ranked_devices AS (\r\n  SELECT\r\n    d.id AS \"ID\",\r\n    d.name AS \"Name\",\r\n    d.location AS \"Location\",\r\n    AVG((t.metrics->'telemetry'->>'tds')::numeric) AS \"Avg. TDS\"\r\n  FROM devices d\r\n  INNER JOIN device_telemetry t ON d.id = t.id\r\n  WHERE $__timeFilter(t.time)\r\n    AND t.metrics->'telemetry'->>'tds' IS NOT NULL\r\n  GROUP BY d.id, d.name, d.location\r\n)\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY \"Avg. TDS\" DESC) AS \"#\",\r\n  \"Name\",\r\n  \"Location\",\r\n  \"ID\",\r\n  \"Avg. TDS\"\r\nFROM ranked_devices\r\nORDER BY \"Avg. TDS\" DESC\r\nLIMIT 10;",
+                        "rawSql": "WITH ranked_devices AS (\r\n  SELECT\r\n    d.id AS \"ID\",\r\n    d.name AS \"Name\",\r\n    d.location AS \"Location\",\r\n\r\n    AVG(\r\n      NULLIF(t.metrics->'telemetry'->>'tds', '')::numeric\r\n    ) AS \"Avg. TDS\"\r\n\r\n  FROM devices d\r\n\r\n  INNER JOIN device_telemetry t \r\n    ON d.id = t.id\r\n\r\n  WHERE $__timeFilter(t.time)\r\n\r\n  GROUP BY d.id, d.name, d.location\r\n)\r\n\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY \"Avg. TDS\" DESC) AS \"#\",\r\n  \"Name\",\r\n  \"Location\",\r\n  \"ID\",\r\n  \"Avg. TDS\"\r\n\r\nFROM ranked_devices\r\n\r\nWHERE \"Avg. TDS\" IS NOT NULL\r\n\r\nORDER BY \"Avg. TDS\" DESC\r\nLIMIT 10;",
                         "sql": {
                           "columns": [
                             {
@@ -928,7 +928,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n  AVG((metrics->'telemetry'->>'tds')::numeric) AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
+                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n\r\n  AVG(\r\n    NULLIF(metrics->'telemetry'->>'tds', '')::numeric\r\n  ) AS \"TDS\"\r\n\r\nFROM device_telemetry\r\n\r\nWHERE $__timeFilter(time)\r\n\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -1007,15 +1007,15 @@
                         "color": "green"
                       },
                       {
-                        "value": 300,
+                        "value": 150,
                         "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -1091,7 +1091,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  t.tds AS \"TDS\",\r\n  t.last_seen AS \"Last Measurement\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.id AS \"ID\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    (sub.metrics->'telemetry'->>'tds')::numeric AS tds,\r\n    sub.time AS last_seen\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\nWHERE t.tds IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  t.tds AS \"TDS\",\r\n  t.last_seen AS \"Last Measurement\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.id AS \"ID\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    NULLIF(sub.metrics->'telemetry'->>'tds', '')::numeric AS tds,\r\n    sub.time AS last_seen\r\n\r\n  FROM device_telemetry sub\r\n\r\n  WHERE sub.id = d.id\r\n\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\n\r\nWHERE t.tds IS NOT NULL;",
                         "sql": {
                           "columns": [
                             {
@@ -1356,7 +1356,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time);",
                         "sql": {
                           "columns": [
                             {
@@ -1467,7 +1467,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "WITH ranked_devices AS (\r\n  SELECT\r\n    d.id AS \"ID\",\r\n    d.name AS \"Name\",\r\n    d.location AS \"Location\",\r\n    AVG((t.metrics->'telemetry'->>'temperature')::numeric) AS \"Avg. Temperature\"\r\n  FROM devices d\r\n  INNER JOIN device_telemetry t ON d.id = t.id\r\n  WHERE $__timeFilter(t.time)\r\n    AND t.metrics->'telemetry'->>'temperature' IS NOT NULL\r\n  GROUP BY d.id, d.name, d.location\r\n)\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY \"Avg. Temperature\" DESC) AS \"#\",\r\n  \"Name\",\r\n  \"Location\",\r\n  \"ID\",\r\n  \"Avg. Temperature\"\r\nFROM ranked_devices\r\nORDER BY \"Avg. Temperature\" DESC\r\nLIMIT 10;",
+                        "rawSql": "WITH ranked_devices AS (\r\n  SELECT\r\n    d.id AS \"ID\",\r\n    d.name AS \"Name\",\r\n    d.location AS \"Location\",\r\n\r\n    AVG(\r\n      NULLIF(t.metrics->'telemetry'->>'temperature', '')::numeric\r\n    ) AS \"Avg. Temperature\"\r\n\r\n  FROM devices d\r\n\r\n  INNER JOIN device_telemetry t\r\n    ON d.id = t.id\r\n\r\n  WHERE $__timeFilter(t.time)\r\n\r\n  GROUP BY d.id, d.name, d.location\r\n)\r\n\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY \"Avg. Temperature\" DESC) AS \"#\",\r\n  \"Name\",\r\n  \"Location\",\r\n  \"ID\",\r\n  \"Avg. Temperature\"\r\n\r\nFROM ranked_devices\r\n\r\nWHERE \"Avg. Temperature\" IS NOT NULL\r\n\r\nORDER BY \"Avg. Temperature\" DESC\r\nLIMIT 10;",
                         "sql": {
                           "columns": [
                             {
@@ -1643,7 +1643,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n  AVG((metrics->'telemetry'->>'temperature')::numeric) AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
+                        "rawSql": "SELECT \r\n  $__timeGroupAlias(time, $__interval),\r\n\r\n  AVG(\r\n    NULLIF(metrics->'telemetry'->>'temperature', '')::numeric\r\n  ) AS \"Temperature\"\r\n\r\nFROM device_telemetry\r\n\r\nWHERE $__timeFilter(time)\r\n\r\nGROUP BY 1\r\nORDER BY 1 ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -1806,7 +1806,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  t.temperature AS \"Temperature\",\r\n  t.last_seen AS \"Last Measurement\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.id AS \"ID\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    (sub.metrics->'telemetry'->>'temperature')::numeric AS temperature,\r\n    sub.time AS last_seen\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\nWHERE t.temperature IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  t.temperature AS \"Temperature\",\r\n  t.last_seen AS \"Last Measurement\",\r\n\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.id AS \"ID\",\r\n  d.node_id AS \"Linked Node ID\",\r\n\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    NULLIF(\r\n      sub.metrics->'telemetry'->>'temperature',\r\n      ''\r\n    )::numeric AS temperature,\r\n\r\n    sub.time AS last_seen\r\n\r\n  FROM device_telemetry sub\r\n\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\n\r\nWHERE t.temperature IS NOT NULL;",
                         "sql": {
                           "columns": [
                             {
@@ -2170,7 +2170,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (COUNT(CASE WHEN t.time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1 END) * 100.0) \r\n  / NULLIF(COUNT(d.id), 0) AS value\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  COUNT(*) FILTER (\r\n    WHERE t.time >= NOW() - ($node_offline_timeout || ' second')::interval\r\n  ) * 100.0 / NULLIF(COUNT(*), 0) AS value\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
                         "sql": {
                           "columns": [
                             {
@@ -2282,7 +2282,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT COUNT(d.id) AS value\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\nWHERE t.time >= NOW() - ($node_offline_timeout || ' second')::interval;",
+                        "rawSql": "SELECT COUNT(*) AS value\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\n\r\nWHERE t.time >= NOW() - ($node_offline_timeout || ' second')::interval;",
                         "sql": {
                           "columns": [
                             {
@@ -2385,7 +2385,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT COUNT(d.id) AS value\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\nWHERE t.time IS NULL \r\n   OR t.time < NOW() - ($node_offline_timeout || ' second')::interval;",
+                        "rawSql": "SELECT COUNT(*) AS value\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\n\r\nWHERE \r\n  t.time IS NULL\r\n  OR t.time < NOW() - ($node_offline_timeout || ' second')::interval;",
                         "sql": {
                           "columns": [
                             {
@@ -2488,7 +2488,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  AVG((metrics->'telemetry'->>'tds')::numeric) AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  AVG(NULLIF(metrics->'telemetry'->>'tds', '')::numeric) AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time);",
                         "sql": {
                           "columns": [
                             {
@@ -2557,15 +2557,15 @@
                         "color": "green"
                       },
                       {
-                        "value": 300,
+                        "value": 150,
                         "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -2604,7 +2604,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  AVG((metrics->'telemetry'->>'temperature')::numeric) AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  AVG(NULLIF(metrics->'telemetry'->>'temperature', '')::numeric) AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time);",
                         "sql": {
                           "columns": [
                             {
@@ -2758,7 +2758,7 @@
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-8"
+                          "name": "panel-4"
                         }
                       }
                     },
@@ -2784,7 +2784,7 @@
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-4"
+                          "name": "panel-6"
                         }
                       }
                     },
@@ -2810,7 +2810,7 @@
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-6"
+                          "name": "panel-8"
                         }
                       }
                     }
