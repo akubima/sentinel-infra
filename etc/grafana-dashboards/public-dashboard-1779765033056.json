@@ -2,9 +2,9 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "lern8xx",
-    "generation": 8,
-    "creationTimestamp": "2026-05-25T03:16:52Z",
+    "name": "lemvr6l",
+    "generation": 12,
+    "creationTimestamp": "2026-05-26T02:44:58Z",
     "labels": {},
     "annotations": {}
   },
@@ -17,7 +17,10 @@
             "kind": "DataQuery",
             "group": "grafana",
             "version": "v0",
-            "spec": {}
+            "spec": {},
+            "labels": {
+              "grafana.app/export-label": "grafana-1"
+            }
           },
           "enable": true,
           "hide": true,
@@ -28,13 +31,136 @@
       }
     ],
     "cursorSync": "Off",
-    "description": "Monitors a specific IoT node.",
     "editable": true,
     "elements": {
-      "panel-1": {
+      "panel-10": {
         "kind": "Panel",
         "spec": {
-          "id": 1,
+          "id": 10,
+          "title": "Metadata",
+          "description": "Node metadata.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  null,\r\n  name AS \"Name\",\r\n  location AS \"Location\",\r\n  CONCAT(latitude, ', ', longitude) AS \"Coordinates\"\r\nFROM devices\r\nWHERE id = '$id';",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "transpose",
+                  "spec": {
+                    "options": {
+                      "emptyValue": "null",
+                      "firstFieldName": "Attribute",
+                      "restFieldsName": "Value"
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": []
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Attribute"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 150
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
           "title": "TDS",
           "description": "Displays the last known TDS value in ppm for the specific device selected within the active timeframe.",
           "links": [],
@@ -88,21 +214,22 @@
           },
           "vizConfig": {
             "kind": "VizConfig",
-            "group": "gauge",
+            "group": "bargauge",
             "version": "13.0.1",
             "spec": {
               "options": {
-                "barShape": "rounded",
-                "barWidthFactor": 0.5,
-                "effects": {
-                  "barGlow": false,
-                  "centerGlow": false,
-                  "gradient": false
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
                 },
-                "endpointMarker": "point",
-                "minVizHeight": 75,
-                "minVizWidth": 75,
-                "orientation": "auto",
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
                 "reduceOptions": {
                   "calcs": [
                     "last"
@@ -110,18 +237,15 @@
                   "fields": "/^value$/",
                   "values": false
                 },
-                "segmentCount": 1,
-                "segmentSpacing": 0.3,
-                "shape": "gauge",
-                "showThresholdLabels": true,
-                "showThresholdMarkers": true,
+                "showUnfilled": true,
                 "sizing": "auto",
-                "sparkline": true,
-                "textMode": "value"
+                "valueMode": "color"
               },
               "fieldConfig": {
                 "defaults": {
                   "unit": "ppm",
+                  "min": 0,
+                  "max": 500,
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -130,19 +254,19 @@
                         "color": "text"
                       },
                       {
-                        "value": 1,
+                        "value": 0,
                         "color": "green"
                       },
                       {
-                        "value": 300,
-                        "color": "#EAB839"
+                        "value": 150,
+                        "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -159,10 +283,406 @@
           }
         }
       },
-      "panel-10": {
+      "panel-12": {
         "kind": "Panel",
         "spec": {
-          "id": 10,
+          "id": 12,
+          "title": "Temperature",
+          "description": "Displays the last known TDS value in ppm for the specific device selected within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  time AS \"Time\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "/^value$/",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      },
+                      {
+                        "value": -999,
+                        "color": "blue"
+                      },
+                      {
+                        "value": 10,
+                        "color": "green"
+                      },
+                      {
+                        "value": 25,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 40,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-13": {
+        "kind": "Panel",
+        "spec": {
+          "id": 13,
+          "title": "TDS Value Distribution",
+          "description": "Displays the actual time-series tracking of Total Dissolved Solids (TDS) in ppm  for the selected node within the active timeframe.\"",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "histogram",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "ppm",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic-by-name"
+                  },
+                  "noValue": "---",
+                  "custom": {
+                    "fillOpacity": 5,
+                    "gradientMode": "opacity",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    }
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-14": {
+        "kind": "Panel",
+        "spec": {
+          "id": 14,
+          "title": "Top 10 TDS Logs",
+          "description": "Displays the top 10 highest TDS measurements and their exact timestamps recorded by the selected node within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT\r\n  ROW_NUMBER() OVER (ORDER BY (t.metrics->'telemetry'->>'tds')::numeric DESC) AS \"#\",\r\n  t.time AS \"Measurement Time\",\r\n  (t.metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry t\r\nWHERE $__timeFilter(t.time)\r\n  AND t.id = '$id'\r\n  AND t.metrics->'telemetry'->>'tds' IS NOT NULL\r\nORDER BY \"TDS\" DESC\r\nLIMIT 10;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "enablePagination": true,
+                "showHeader": true,
+                "sortBy": []
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": true,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "TDS"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "ppm"
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "text",
+                              "value": 0
+                            },
+                            {
+                              "color": "green",
+                              "value": 0
+                            },
+                            {
+                              "color": "#EAB839",
+                              "value": 150
+                            },
+                            {
+                              "color": "red",
+                              "value": 300
+                            },
+                            {
+                              "color": "purple",
+                              "value": 500
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "#"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 50
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-15": {
+        "kind": "Panel",
+        "spec": {
+          "id": 15,
           "title": "TDS Over Time",
           "description": "Displays the actual, non-aggregated time-series tracking of Total Dissolved Solids (TDS) in ppm for the selected node within the active timeframe.",
           "links": [],
@@ -257,19 +777,19 @@
                         "color": "text"
                       },
                       {
-                        "value": 1,
+                        "value": 0,
                         "color": "green"
                       },
                       {
-                        "value": 300,
-                        "color": "#EAB839"
+                        "value": 150,
+                        "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -322,10 +842,10 @@
           }
         }
       },
-      "panel-12": {
+      "panel-16": {
         "kind": "Panel",
         "spec": {
-          "id": 12,
+          "id": 16,
           "title": "Temperature Value Distribution",
           "description": "Displays the frequency distribution of water temperature measurements for the selected node within the active timeframe.",
           "links": [],
@@ -433,177 +953,10 @@
           }
         }
       },
-      "panel-14": {
+      "panel-17": {
         "kind": "Panel",
         "spec": {
-          "id": 14,
-          "title": "Temperature Over Time",
-          "description": "Displays the actual, non-aggregated time-series tracking of water temperature for the selected node within the active timeframe.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL\r\nORDER BY time ASC;",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "last",
-                    "min",
-                    "max",
-                    "mean",
-                    "median",
-                    "stdDev",
-                    "p25",
-                    "p75",
-                    "count"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "asc"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "celsius",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      },
-                      {
-                        "value": -999,
-                        "color": "blue"
-                      },
-                      {
-                        "value": 10,
-                        "color": "green"
-                      },
-                      {
-                        "value": 15,
-                        "color": "yellow"
-                      },
-                      {
-                        "value": 25,
-                        "color": "semi-dark-orange"
-                      },
-                      {
-                        "value": 40,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "noValue": "---",
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 5,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": 300000,
-                    "lineInterpolation": "smooth",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 1,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": 300000,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "dashed"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-16": {
-        "kind": "Panel",
-        "spec": {
-          "id": 16,
+          "id": 17,
           "title": "Top 10 Temperature Logs",
           "description": "Displays the top 10 highest water temperature measurements and their exact timestamps recorded by the selected node within the active timeframe.",
           "links": [],
@@ -722,11 +1075,7 @@
                               "value": 10
                             },
                             {
-                              "color": "#EAB839",
-                              "value": 15
-                            },
-                            {
-                              "color": "semi-dark-orange",
+                              "color": "yellow",
                               "value": 25
                             },
                             {
@@ -763,10 +1112,539 @@
           }
         }
       },
-      "panel-2": {
+      "panel-18": {
         "kind": "Panel",
         "spec": {
-          "id": 2,
+          "id": 18,
+          "title": "Temperature Over Time",
+          "description": "Displays the actual, non-aggregated time-series tracking of water temperature for the selected node within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL\r\nORDER BY time ASC;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [
+                    "last",
+                    "min",
+                    "max",
+                    "mean",
+                    "median",
+                    "stdDev",
+                    "p25",
+                    "p75",
+                    "count"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "asc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      },
+                      {
+                        "value": -999,
+                        "color": "blue"
+                      },
+                      {
+                        "value": 10,
+                        "color": "green"
+                      },
+                      {
+                        "value": 25,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 40,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 5,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": 300000,
+                    "lineInterpolation": "smooth",
+                    "lineStyle": {
+                      "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": 300000,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "dashed"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Location",
+          "description": "Node location based on registered data, color represents node's status.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "geomap",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "basemap": {
+                  "config": {},
+                  "name": "Layer 2",
+                  "noRepeat": false,
+                  "type": "default"
+                },
+                "controls": {
+                  "mouseWheelZoom": true,
+                  "showAttribution": true,
+                  "showDebug": false,
+                  "showMeasure": false,
+                  "showScale": false,
+                  "showZoom": false
+                },
+                "layers": [
+                  {
+                    "config": {
+                      "showLegend": false,
+                      "style": {
+                        "color": {
+                          "field": "Status",
+                          "fixed": "blue"
+                        },
+                        "opacity": 1,
+                        "rotation": {
+                          "fixed": 0,
+                          "max": 360,
+                          "min": -360,
+                          "mode": "mod"
+                        },
+                        "size": {
+                          "fixed": 5,
+                          "max": 15,
+                          "min": 2
+                        },
+                        "symbol": {
+                          "fixed": "img/icons/marker/circle.svg",
+                          "mode": "fixed"
+                        },
+                        "symbolAlign": {
+                          "horizontal": "center",
+                          "vertical": "center"
+                        },
+                        "text": {
+                          "field": "",
+                          "fixed": "",
+                          "mode": "field"
+                        },
+                        "textConfig": {
+                          "fontSize": 12,
+                          "offsetX": 0,
+                          "offsetY": 0,
+                          "textAlign": "center",
+                          "textBaseline": "middle"
+                        }
+                      }
+                    },
+                    "layer-tooltip": true,
+                    "location": {
+                      "gazetteer": "public/build/gazetteer/countries.json",
+                      "lookup": "Coordinates",
+                      "mode": "auto"
+                    },
+                    "name": "Node",
+                    "tooltip": true,
+                    "type": "markers"
+                  }
+                ],
+                "tooltip": {
+                  "mode": "details"
+                },
+                "view": {
+                  "allLayers": true,
+                  "dashboardVariable": false,
+                  "id": "fit",
+                  "lat": 0,
+                  "lon": 0,
+                  "noRepeat": false,
+                  "padding": 15,
+                  "zoom": 18
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds",
+                    "fixedColor": "purple"
+                  },
+                  "noValue": "---",
+                  "custom": {
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    }
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Status"
+                    },
+                    "properties": [
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "options": {
+                              "0": {
+                                "color": "red",
+                                "index": 0,
+                                "text": "OFFLINE"
+                              },
+                              "1": {
+                                "color": "green",
+                                "index": 1,
+                                "text": "ONLINE"
+                              }
+                            },
+                            "type": "value"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "latitude"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": true,
+                          "viz": true
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "longitude"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": true,
+                          "viz": true
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "TDS",
+          "description": "Displays the last known TDS value in ppm for the specific device selected within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  time AS \"Time\",\r\n  (metrics->'telemetry'->>'tds')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "rounded",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "/^value$/",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": true,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": true,
+                "textMode": "value"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "ppm",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      },
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 150,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 300,
+                        "color": "red"
+                      },
+                      {
+                        "value": 500,
+                        "color": "purple"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
           "title": "Temperature",
           "description": "Displays the last known water temperature value in Celsius for the specific device selected within the active timeframe.",
           "links": [],
@@ -895,10 +1773,10 @@
           }
         }
       },
-      "panel-3": {
+      "panel-9": {
         "kind": "Panel",
         "spec": {
-          "id": 3,
+          "id": 9,
           "title": "",
           "description": "Node status.",
           "links": [],
@@ -1023,956 +1901,16 @@
             }
           }
         }
-      },
-      "panel-4": {
-        "kind": "Panel",
-        "spec": {
-          "id": 4,
-          "title": "Network",
-          "description": "Node's network status.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT \r\n    id,\r\n    metrics,\r\n    CASE \r\n      WHEN time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1\r\n      ELSE 0\r\n    END AS status_code\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  COALESCE(t.status_code, 0) AS \"Status\",\r\n  CASE WHEN t.status_code = 1 THEN t.metrics->'networking'->>'SSID' ELSE NULL END AS \"SSID\",\r\n  CASE WHEN t.status_code = 1 THEN t.metrics->'networking'->>'local_ip' ELSE NULL END AS \"Local IP\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "last"
-                  ],
-                  "fields": "/.*/",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "text": {
-                  "titleSize": 14,
-                  "valueSize": 28
-                },
-                "textMode": "value_and_name",
-                "wideLayout": false
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "noValue": "---"
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "Status"
-                    },
-                    "properties": [
-                      {
-                        "id": "mappings",
-                        "value": [
-                          {
-                            "options": {
-                              "0": {
-                                "color": "red",
-                                "index": 0,
-                                "text": "Disconnected"
-                              },
-                              "1": {
-                                "color": "green",
-                                "index": 1,
-                                "text": "Connected"
-                              }
-                            },
-                            "type": "value"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-5": {
-        "kind": "Panel",
-        "spec": {
-          "id": 5,
-          "title": "Metadata",
-          "description": "Node metadata.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT\r\n    id,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  null,\r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinate\",\r\n  TO_CHAR(d.created_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Date Registered\",\r\n  TO_CHAR(d.updated_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Last Updated\",\r\n  d.node_id AS \"Linked Node ID\", \r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [
-                {
-                  "kind": "Transformation",
-                  "group": "transpose",
-                  "spec": {
-                    "options": {
-                      "emptyValue": "null",
-                      "firstFieldName": "Attribute",
-                      "restFieldsName": "Value"
-                    }
-                  }
-                }
-              ],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "table",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "cellHeight": "sm",
-                "showHeader": true,
-                "sortBy": []
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "noValue": "---",
-                  "custom": {
-                    "align": "auto",
-                    "cellOptions": {
-                      "type": "auto"
-                    },
-                    "footer": {
-                      "reducers": []
-                    },
-                    "inspect": false
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "Attribute"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.width",
-                        "value": 150
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-6": {
-        "kind": "Panel",
-        "spec": {
-          "id": 6,
-          "title": "Location",
-          "description": "Node location based on registered data, color represents node's status.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinate\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "geomap",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "basemap": {
-                  "config": {},
-                  "name": "Layer 2",
-                  "noRepeat": false,
-                  "type": "default"
-                },
-                "controls": {
-                  "mouseWheelZoom": true,
-                  "showAttribution": true,
-                  "showDebug": false,
-                  "showMeasure": false,
-                  "showScale": false,
-                  "showZoom": false
-                },
-                "layers": [
-                  {
-                    "config": {
-                      "showLegend": false,
-                      "style": {
-                        "color": {
-                          "field": "Status",
-                          "fixed": "blue"
-                        },
-                        "opacity": 1,
-                        "rotation": {
-                          "fixed": 0,
-                          "max": 360,
-                          "min": -360,
-                          "mode": "mod"
-                        },
-                        "size": {
-                          "fixed": 5,
-                          "max": 15,
-                          "min": 2
-                        },
-                        "symbol": {
-                          "fixed": "img/icons/marker/circle.svg",
-                          "mode": "fixed"
-                        },
-                        "symbolAlign": {
-                          "horizontal": "center",
-                          "vertical": "center"
-                        },
-                        "text": {
-                          "field": "",
-                          "fixed": "",
-                          "mode": "field"
-                        },
-                        "textConfig": {
-                          "fontSize": 12,
-                          "offsetX": 0,
-                          "offsetY": 0,
-                          "textAlign": "center",
-                          "textBaseline": "middle"
-                        }
-                      }
-                    },
-                    "layer-tooltip": true,
-                    "location": {
-                      "gazetteer": "public/build/gazetteer/countries.json",
-                      "lookup": "Coordinate",
-                      "mode": "auto"
-                    },
-                    "name": "Node",
-                    "tooltip": true,
-                    "type": "markers"
-                  }
-                ],
-                "tooltip": {
-                  "mode": "details"
-                },
-                "view": {
-                  "allLayers": true,
-                  "dashboardVariable": false,
-                  "id": "fit",
-                  "lat": 0,
-                  "lon": 0,
-                  "noRepeat": false,
-                  "padding": 15,
-                  "zoom": 18
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds",
-                    "fixedColor": "purple"
-                  },
-                  "noValue": "---",
-                  "custom": {
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    }
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "Status"
-                    },
-                    "properties": [
-                      {
-                        "id": "mappings",
-                        "value": [
-                          {
-                            "options": {
-                              "0": {
-                                "color": "red",
-                                "index": 0,
-                                "text": "OFFLINE"
-                              },
-                              "1": {
-                                "color": "green",
-                                "index": 1,
-                                "text": "ONLINE"
-                              }
-                            },
-                            "type": "value"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "latitude"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.hideFrom",
-                        "value": {
-                          "legend": true,
-                          "tooltip": true,
-                          "viz": true
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "longitude"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.hideFrom",
-                        "value": {
-                          "legend": true,
-                          "tooltip": true,
-                          "viz": true
-                        }
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-7": {
-        "kind": "Panel",
-        "spec": {
-          "id": 7,
-          "title": "TDS & Temperature",
-          "description": "The TDS and water temperature measurements recorded by the selected node within the specified timeframe.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "last",
-                    "min",
-                    "max",
-                    "mean",
-                    "median",
-                    "stdDev",
-                    "p25",
-                    "p75",
-                    "count"
-                  ],
-                  "displayMode": "table",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic-by-name"
-                  },
-                  "noValue": "---",
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 5,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": 300000,
-                    "lineInterpolation": "smooth",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 1,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": 300000,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "TDS"
-                    },
-                    "properties": [
-                      {
-                        "id": "unit",
-                        "value": "ppm"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "Temperature"
-                    },
-                    "properties": [
-                      {
-                        "id": "unit",
-                        "value": "celsius"
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "panel-8": {
-        "kind": "Panel",
-        "spec": {
-          "id": 8,
-          "title": "TDS Value Distribution",
-          "description": "Displays the actual time-series tracking of Total Dissolved Solids (TDS) in ppm  for the selected node within the active timeframe.\"",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "histogram",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": false
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "ppm",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic-by-name"
-                  },
-                  "noValue": "---",
-                  "custom": {
-                    "fillOpacity": 5,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "lineWidth": 1,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    }
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-9": {
-        "kind": "Panel",
-        "spec": {
-          "id": 9,
-          "title": "Top 10 TDS Logs",
-          "description": "Displays the top 10 highest TDS measurements and their exact timestamps recorded by the selected node within the active timeframe.",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "grafana-postgresql-datasource",
-                      "version": "v0",
-                      "spec": {
-                        "dataset": "sentinel",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT\r\n  ROW_NUMBER() OVER (ORDER BY (t.metrics->'telemetry'->>'tds')::numeric DESC) AS \"#\",\r\n  t.time AS \"Measurement Time\",\r\n  (t.metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry t\r\nWHERE $__timeFilter(t.time)\r\n  AND t.id = '$id'\r\n  AND t.metrics->'telemetry'->>'tds' IS NOT NULL\r\nORDER BY \"TDS\" DESC\r\nLIMIT 10;",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "table",
-            "version": "13.0.1",
-            "spec": {
-              "options": {
-                "cellHeight": "sm",
-                "enablePagination": true,
-                "showHeader": true,
-                "sortBy": []
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "text"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds"
-                  },
-                  "custom": {
-                    "align": "auto",
-                    "cellOptions": {
-                      "type": "auto"
-                    },
-                    "filterable": true,
-                    "footer": {
-                      "reducers": []
-                    },
-                    "inspect": false
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "TDS"
-                    },
-                    "properties": [
-                      {
-                        "id": "unit",
-                        "value": "ppm"
-                      },
-                      {
-                        "id": "thresholds",
-                        "value": {
-                          "mode": "absolute",
-                          "steps": [
-                            {
-                              "color": "text",
-                              "value": 0
-                            },
-                            {
-                              "color": "green",
-                              "value": 1
-                            },
-                            {
-                              "color": "#EAB839",
-                              "value": 300
-                            },
-                            {
-                              "color": "red",
-                              "value": 600
-                            },
-                            {
-                              "color": "purple",
-                              "value": 900
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "id": "custom.cellOptions",
-                        "value": {
-                          "type": "color-text"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "scope": "series",
-                      "options": "#"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.width",
-                        "value": 50
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        }
       }
     },
     "layout": {
-      "kind": "RowsLayout",
+      "kind": "TabsLayout",
       "spec": {
-        "rows": [
+        "tabs": [
           {
-            "kind": "RowsLayoutRow",
+            "kind": "TabsLayoutTab",
             "spec": {
               "title": "Overview",
-              "collapse": false,
-              "fillScreen": false,
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -1983,10 +1921,10 @@
                         "x": 0,
                         "y": 0,
                         "width": 6,
-                        "height": 7,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-1"
+                          "name": "panel-7"
                         }
                       }
                     },
@@ -1996,10 +1934,10 @@
                         "x": 6,
                         "y": 0,
                         "width": 6,
-                        "height": 7,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-2"
+                          "name": "panel-8"
                         }
                       }
                     },
@@ -2008,24 +1946,24 @@
                       "spec": {
                         "x": 12,
                         "y": 0,
-                        "width": 5,
-                        "height": 7,
+                        "width": 12,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-3"
+                          "name": "panel-11"
                         }
                       }
                     },
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 17,
-                        "y": 0,
-                        "width": 7,
-                        "height": 7,
+                        "x": 12,
+                        "y": 4,
+                        "width": 12,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-4"
+                          "name": "panel-12"
                         }
                       }
                     },
@@ -2033,22 +1971,35 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 7,
-                        "width": 12,
-                        "height": 11,
+                        "y": 8,
+                        "width": 6,
+                        "height": 7,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-5"
+                          "name": "panel-9"
                         }
                       }
                     },
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 12,
-                        "y": 7,
-                        "width": 12,
-                        "height": 11,
+                        "x": 6,
+                        "y": 8,
+                        "width": 11,
+                        "height": 7,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 17,
+                        "y": 8,
+                        "width": 7,
+                        "height": 7,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-6"
@@ -2061,44 +2012,13 @@
             }
           },
           {
-            "kind": "RowsLayoutRow",
+            "kind": "TabsLayoutTab",
             "spec": {
               "title": "Statistics",
-              "collapse": false,
-              "hideHeader": false,
               "layout": {
                 "kind": "RowsLayout",
                 "spec": {
                   "rows": [
-                    {
-                      "kind": "RowsLayoutRow",
-                      "spec": {
-                        "title": "General",
-                        "collapse": false,
-                        "hideHeader": false,
-                        "fillScreen": true,
-                        "layout": {
-                          "kind": "GridLayout",
-                          "spec": {
-                            "items": [
-                              {
-                                "kind": "GridLayoutItem",
-                                "spec": {
-                                  "x": 0,
-                                  "y": 0,
-                                  "width": 24,
-                                  "height": 12,
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-7"
-                                  }
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      }
-                    },
                     {
                       "kind": "RowsLayoutRow",
                       "spec": {
@@ -2113,24 +2033,11 @@
                                 "spec": {
                                   "x": 0,
                                   "y": 0,
-                                  "width": 11,
-                                  "height": 10,
+                                  "width": 24,
+                                  "height": 12,
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-8"
-                                  }
-                                }
-                              },
-                              {
-                                "kind": "GridLayoutItem",
-                                "spec": {
-                                  "x": 11,
-                                  "y": 0,
-                                  "width": 13,
-                                  "height": 10,
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-9"
+                                    "name": "panel-15"
                                   }
                                 }
                               },
@@ -2138,12 +2045,25 @@
                                 "kind": "GridLayoutItem",
                                 "spec": {
                                   "x": 0,
-                                  "y": 10,
-                                  "width": 24,
-                                  "height": 12,
+                                  "y": 12,
+                                  "width": 11,
+                                  "height": 10,
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-10"
+                                    "name": "panel-13"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "GridLayoutItem",
+                                "spec": {
+                                  "x": 11,
+                                  "y": 12,
+                                  "width": 13,
+                                  "height": 10,
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-14"
                                   }
                                 }
                               }
@@ -2166,20 +2086,20 @@
                                 "spec": {
                                   "x": 0,
                                   "y": 0,
-                                  "width": 11,
-                                  "height": 10,
+                                  "width": 24,
+                                  "height": 12,
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-12"
+                                    "name": "panel-18"
                                   }
                                 }
                               },
                               {
                                 "kind": "GridLayoutItem",
                                 "spec": {
-                                  "x": 11,
-                                  "y": 0,
-                                  "width": 13,
+                                  "x": 0,
+                                  "y": 12,
+                                  "width": 11,
                                   "height": 10,
                                   "element": {
                                     "kind": "ElementReference",
@@ -2190,13 +2110,13 @@
                               {
                                 "kind": "GridLayoutItem",
                                 "spec": {
-                                  "x": 0,
-                                  "y": 10,
-                                  "width": 24,
-                                  "height": 12,
+                                  "x": 11,
+                                  "y": 12,
+                                  "width": 13,
+                                  "height": 10,
                                   "element": {
                                     "kind": "ElementReference",
-                                    "name": "panel-14"
+                                    "name": "panel-17"
                                   }
                                 }
                               }
@@ -2213,31 +2133,18 @@
         ]
       }
     },
-    "links": [
-      {
-        "title": "Back to Fleet",
-        "type": "link",
-        "icon": "dashboard",
-        "tooltip": "Back to fleet dashboard",
-        "url": "/d/le6n2tq/iot-fleet-monitoring",
-        "tags": [],
-        "asDropdown": true,
-        "targetBlank": false,
-        "includeVars": false,
-        "keepTime": false
-      }
-    ],
+    "links": [],
     "liveNow": false,
     "preload": false,
     "tags": [
       "sentinel",
-      "sentinel:dashboard:monitoring:node"
+      "sentinel:dashboard:public"
     ],
     "timeSettings": {
       "timezone": "browser",
       "from": "now-12h",
       "to": "now",
-      "autoRefresh": "auto",
+      "autoRefresh": "",
       "autoRefreshIntervals": [
         "5s",
         "10s",
@@ -2253,7 +2160,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "IoT Node Monitoring",
+    "title": "Sentinel",
     "variables": [
       {
         "kind": "QueryVariable",
@@ -2267,7 +2174,6 @@
           "hide": "dontHide",
           "refresh": "onDashboardLoad",
           "skipUrlSync": false,
-          "description": "The logical node ID registered in the devices database.",
           "query": {
             "kind": "DataQuery",
             "group": "grafana-postgresql-datasource",
@@ -2280,9 +2186,9 @@
                 "textField": "label",
                 "valueField": "id"
               },
-              "query": "SELECT\r\n  id,\r\n  name || ' - ' || location AS label\r\nFROM devices;",
+              "query": "SELECT\r\n  id,\r\n  name || ' - ' || location as label\r\nFROM devices;",
               "rawQuery": true,
-              "rawSql": "SELECT\r\n  id,\r\n  name || ' - ' || location AS label\r\nFROM devices;",
+              "rawSql": "SELECT\r\n  id,\r\n  name || ' - ' || location as label\r\nFROM devices;",
               "refId": "SQLVariableQueryEditor-VariableQuery",
               "sql": {
                 "columns": [
@@ -2308,8 +2214,8 @@
           },
           "regex": "",
           "regexApplyTo": "value",
-          "sort": "alphabeticalAsc",
-          "definition": "SELECT\r\n  id,\r\n  name || ' - ' || location AS label\r\nFROM devices;",
+          "sort": "disabled",
+          "definition": "SELECT\r\n  id,\r\n  name || ' - ' || location as label\r\nFROM devices;",
           "options": [],
           "multi": false,
           "includeAll": false,
