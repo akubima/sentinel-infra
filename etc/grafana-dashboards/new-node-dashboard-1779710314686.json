@@ -1172,7 +1172,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT\r\n    id,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  null,\r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinate\",\r\n  TO_CHAR(d.created_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Date Registered\",\r\n  TO_CHAR(d.updated_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Last Updated\",\r\n  d.node_id AS \"Linked Node ID\", \r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT\r\n    id,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  null,\r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  TO_CHAR(d.created_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Date Registered\",\r\n  TO_CHAR(d.updated_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Last Updated\",\r\n  d.node_id AS \"Linked Node ID\", \r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -1296,7 +1296,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinate\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -1394,7 +1394,7 @@
                     "layer-tooltip": true,
                     "location": {
                       "gazetteer": "public/build/gazetteer/countries.json",
-                      "lookup": "Coordinate",
+                      "lookup": "Coordinates",
                       "mode": "auto"
                     },
                     "name": "Node",
