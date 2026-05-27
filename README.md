@@ -5,7 +5,9 @@
 [![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescaledb&logoColor=white)](https://www.timescale.com)
 [![Vault](https://img.shields.io/badge/vault-1.15+-000000.svg?style=flat&logo=hashicorp&logoColor=white)](https://www.vaultproject.io)
 
-Declarative Kubernetes manifests and bootstrap notes for the Sentinel infrastructure stack. The repository provisions storage, networking, Vault-backed secrets, a TimescaleDB/PostGIS database, a private registry, Grafana, an AWS IoT bridge service, and Cloudflare Tunnel ingress.
+Declarative Kubernetes manifests and bootstrap notes for the Sentinel infrastructure stack. The repository provisions Longhorn storage, MetalLB networking, Vault-backed secrets, a CNPG PostgreSQL cluster with TimescaleDB/PostGIS, a private registry, Grafana, an AWS IoT bridge service, and Cloudflare Tunnel ingress.
+
+Use this README as the ordered deployment guide. The raw command reference is kept in [etc/deployment-reference.sh](etc/deployment-reference.sh).
 
 ## Architecture
 
@@ -42,7 +44,7 @@ graph TD
 |   |-- package.json
 |   `-- server.js
 |-- etc/
-|   |-- deployment-reference.sh       # Bare-metal bootstrap reference
+|   |-- deployment-reference.sh       # Raw bare-metal bootstrap reference
 |   |-- vault-certmanager-403-troubleshooting.md
 |   `-- grafana-dashboards/           # Exported Grafana dashboards
 `-- k8s/
@@ -59,29 +61,232 @@ graph TD
 
 The numbered `k8s/` directories are ordered by dependency: namespaces, storage and networking, secrets, database, then applications.
 
-## Prerequisites
+## Deployment Prerequisites
 
-Use `etc/deployment-reference.sh` as the full bare-metal reference. At minimum, the cluster needs:
+The bootstrap commands assume Ubuntu or Debian hosts using `kubeadm`.
 
-- Kubernetes v1.33 or newer with a working CNI.
-- Longhorn installed, with `open-iscsi` and `nfs-common` on storage nodes.
-- MetalLB installed if you want local `LoadBalancer` services.
+Required tools and operators:
+
+- Kubernetes v1.33 or newer.
+- containerd.
+- Helm.
+- Flannel CNI, or another working CNI with the same pod CIDR assumptions adjusted.
+- Longhorn.
+- MetalLB, if local `LoadBalancer` services are needed.
 - External Secrets Operator.
 - cert-manager.
 - CloudNativePG.
-- Metrics Server if you want cluster metrics in dashboards.
-- A reachable HashiCorp Vault instance from inside the cluster.
+- Metrics Server.
 - Docker or another image builder for `bridge-service`.
 
-For single-node clusters, allow pods on the control plane:
+## Bare-Metal Bootstrap
+
+Run host-level commands on every Kubernetes node unless a step says control plane only.
+
+### 1. Prepare the Host
+
+Disable swap, load Kubernetes networking modules, and enable bridge forwarding:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo swapoff -a
+sudo sed -i '/ swap / s/^/#/' /etc/fstab
+sudo systemctl mask swap.target
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+sudo tee /etc/sysctl.d/kubernetes.conf <<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+sudo sysctl --system
+```
+
+### 2. Install and Configure containerd
+
+```bash
+sudo apt install -y containerd
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+sudo ctr plugins ls | grep cri
+```
+
+If the local registry on NodePort `30500` will be used, configure containerd to allow it:
+
+```bash
+sudo mkdir -p /etc/containerd/certs.d/localhost:30500
+
+sudo tee /etc/containerd/certs.d/localhost:30500/hosts.toml <<EOF
+server = "http://localhost:30500"
+
+[host."http://localhost:30500"]
+  capabilities = ["pull", "resolve", "push"]
+  skip_verify = true
+EOF
+
+sudo systemctl restart containerd
+```
+
+### 3. Install Kubernetes, Helm, and Initialize the Control Plane
+
+Run this section on the control plane node:
+
+```bash
+sudo apt install -y apt-transport-https ca-certificates curl gpg
+sudo mkdir -p /etc/apt/keyrings
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" \
+  | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt update
+sudo apt install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+sudo kubeadm config images pull
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get nodes
+```
+
+For worker nodes, use the join command generated by kubeadm. You can recreate it from the control plane:
+
+```bash
+kubeadm token create --print-join-command
+```
+
+For a single-node cluster, allow workloads on the control plane:
 
 ```bash
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
-## Required Vault Secrets
+### 4. Install the CNI
 
-ExternalSecret resources expect these Vault KV v2 paths under `sentinel-kv`:
+The reference script uses Flannel with pod CIDR `10.244.0.0/16`:
+
+```bash
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+```
+
+### 5. Install Longhorn
+
+Install host dependencies on every Longhorn node:
+
+```bash
+sudo apt install -y open-iscsi nfs-common
+sudo systemctl enable iscsid --now
+```
+
+Install Longhorn from the control plane:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.11.2/deploy/longhorn.yaml
+```
+
+If another storage class was previously default, unset it before applying this stack:
+
+```bash
+kubectl patch storageclass local-path -p \
+  '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+```
+
+Prevent Longhorn volume mount conflicts from `multipathd` on every storage node:
+
+```bash
+sudo tee /etc/multipath.conf <<'EOF'
+defaults {
+    user_friendly_names yes
+}
+
+blacklist {
+    devnode "^sd[a-z]"
+}
+EOF
+
+sudo systemctl restart multipathd
+sudo multipath -F
+```
+
+### 6. Install MetalLB
+
+Enable strict ARP for kube-proxy:
+
+```bash
+kubectl get configmap kube-proxy -n kube-system -o yaml \
+  | sed -e "s/strictARP: false/strictARP: true/" \
+  | kubectl apply -f - -n kube-system
+```
+
+Install MetalLB:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
+kubectl wait --namespace metallb-system --for=condition=ready pod --selector=component=controller --timeout=120s
+```
+
+The repository contains an IP pool template in `k8s/02-metal-lb/01-metallb-ippool.yaml`. Update the addresses for your network and uncomment the manifest before applying it.
+
+### 7. Install External Secrets Operator
+
+```bash
+helm repo add external-secrets https://charts.external-secrets.io
+helm install external-secrets external-secrets/external-secrets \
+  -n external-secrets \
+  --create-namespace
+```
+
+### 8. Install cert-manager
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.20.2/cert-manager.yaml
+```
+
+### 9. Install CloudNativePG
+
+```bash
+kubectl apply --server-side -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.29/releases/cnpg-1.29.1.yaml
+curl -sSfL https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/install-cnpg-plugin.sh \
+  | sudo sh -s -- -b /usr/local/bin
+```
+
+### 10. Install Metrics Server
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+For self-hosted clusters where kubelet TLS validation fails, add `--kubelet-insecure-tls`:
+
+```bash
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/args/-",
+    "value": "--kubelet-insecure-tls"
+  }
+]'
+```
+
+## Vault Secrets
+
+The stack uses External Secrets Operator with Vault KV v2 mounted at `sentinel-kv`. The `SecretStore` resources are defined in `k8s/03-vault/07-vault-kvstore.yaml`.
+
+Before deploying workloads that consume secrets, make sure these Vault paths exist:
 
 | Vault path | Required properties |
 | --- | --- |
@@ -92,29 +297,78 @@ ExternalSecret resources expect these Vault KV v2 paths under `sentinel-kv`:
 
 The bridge certificate values should be stored in a format that can be loaded through environment variables. The service converts escaped newlines (`\n`) back into PEM newlines at startup.
 
-## Deployment
+## Deploy the Sentinel Stack
 
-Install the base namespaces first:
+### 1. Apply Namespaces
 
 ```bash
 kubectl apply -f k8s/00-namespace.yaml
 ```
 
-Install the external operators listed in `etc/deployment-reference.sh`, then apply the stack:
+### 2. Apply Infrastructure Manifests
+
+Apply storage, networking, Vault, Postgres, registry, Grafana, bridge, and Cloudflared manifests in order:
 
 ```bash
 kubectl apply -f k8s/ -R
 ```
 
-If you use the local registry, build and push the bridge image before deploying or restarting the bridge pod:
+If applying step-by-step during debugging, use this order:
 
 ```bash
-docker build -t bridge-service:1.0.0 bridge-service/
-docker tag bridge-service:1.0.0 localhost:30500/bridge-service:1.0.0
-docker push localhost:30500/bridge-service:1.0.0
+kubectl apply -f k8s/01-longhorn/
+kubectl apply -f k8s/02-metal-lb/
+kubectl apply -f k8s/03-vault/
+kubectl apply -f k8s/04-postgres/
+kubectl apply -f k8s/05-registry/
+kubectl apply -f k8s/06-grafana/
+kubectl apply -f k8s/07-bridge-service/
+kubectl apply -f k8s/08-cloudflared/
 ```
 
-The bridge deployment pulls `localhost:30500/bridge-service:1.0.0`, so every node must be configured to trust or allow the registry endpoint. The containerd example is in `etc/deployment-reference.sh`.
+### 3. Build and Push the Bridge Image
+
+The bridge deployment pulls `localhost:30500/bridge-service:1.0.0`.
+
+```bash
+sudo apt install -y docker.io
+
+sudo docker build -t bridge-service:1.0.0 bridge-service/
+sudo docker tag bridge-service:1.0.0 localhost:30500/bridge-service:1.0.0
+sudo docker push localhost:30500/bridge-service:1.0.0
+```
+
+If Docker tries HTTPS against the local HTTP registry, create Docker auth config for `localhost:30500`:
+
+```bash
+mkdir -p ~/.docker
+echo -n 'sentinel:<password>' | base64
+```
+
+Use the generated base64 value in `~/.docker/config.json`:
+
+```json
+{
+  "auths": {
+    "localhost:30500": {
+      "auth": "<base64-value>"
+    }
+  }
+}
+```
+
+Copy it for commands run with `sudo`:
+
+```bash
+sudo mkdir -p /root/.docker
+sudo cp ~/.docker/config.json /root/.docker/config.json
+```
+
+Restart the bridge after pushing a new image:
+
+```bash
+kubectl rollout restart deployment/bridge -n sentinel-infra
+```
 
 ## Postgres Schema
 
@@ -134,9 +388,10 @@ Check rollout status:
 kubectl get pods -n sentinel-infra
 kubectl get externalsecrets -n sentinel-infra
 kubectl get cluster -n sentinel-infra
+kubectl get pods -n kube-system -l app=registry
 ```
 
-Restart an app after a secret or image change:
+Restart applications after secret or image changes:
 
 ```bash
 kubectl rollout restart deployment/grafana -n sentinel-infra
@@ -144,15 +399,14 @@ kubectl rollout restart deployment/bridge -n sentinel-infra
 kubectl rollout restart deployment/cloudflared -n sentinel-infra
 ```
 
-Troubleshoot Longhorn mount issues caused by `multipathd`:
+Troubleshoot Longhorn mount issues:
 
 ```bash
 sudo fuser -v /dev/sdc
 sudo multipath -ll
 sudo multipath -F
+kubectl delete pod -n sentinel-infra -l app=<app-name>
 ```
-
-To prevent the issue permanently on Longhorn nodes, blacklist SCSI devices in `/etc/multipath.conf` as shown in `etc/deployment-reference.sh`.
 
 ## Security
 
