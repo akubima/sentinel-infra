@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "lern8xx",
-    "generation": 6,
-    "creationTimestamp": "2026-05-25T03:16:52Z",
+    "generation": 11,
+    "creationTimestamp": "2026-05-26T02:18:31Z",
     "labels": {},
     "annotations": {}
   },
@@ -29,7 +29,7 @@
     ],
     "cursorSync": "Off",
     "description": "Monitors a specific IoT node.",
-    "editable": true,
+    "editable": false,
     "elements": {
       "panel-1": {
         "kind": "Panel",
@@ -54,7 +54,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"Time\",\r\n  (metrics->'telemetry'->>'tds')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC;",
+                        "rawSql": "SELECT\r\n  time AS \"time\",\r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -113,7 +113,7 @@
                 "segmentCount": 1,
                 "segmentSpacing": 0.3,
                 "shape": "gauge",
-                "showThresholdLabels": false,
+                "showThresholdLabels": true,
                 "showThresholdMarkers": true,
                 "sizing": "auto",
                 "sparkline": true,
@@ -130,19 +130,19 @@
                         "color": "text"
                       },
                       {
-                        "value": 1,
+                        "value": 0,
                         "color": "green"
                       },
                       {
-                        "value": 300,
-                        "color": "#EAB839"
+                        "value": 150,
+                        "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -182,7 +182,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL\r\nORDER BY time ASC;",
+                        "rawSql": "SELECT \r\n  time,\r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -257,19 +257,19 @@
                         "color": "text"
                       },
                       {
-                        "value": 1,
+                        "value": 0,
                         "color": "green"
                       },
                       {
-                        "value": 300,
-                        "color": "#EAB839"
+                        "value": 150,
+                        "color": "yellow"
                       },
                       {
-                        "value": 600,
+                        "value": 300,
                         "color": "red"
                       },
                       {
-                        "value": 900,
+                        "value": 500,
                         "color": "purple"
                       }
                     ]
@@ -345,7 +345,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -456,7 +456,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL\r\nORDER BY time ASC;",
+                        "rawSql": "SELECT \r\n  time,\r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -539,12 +539,8 @@
                         "color": "green"
                       },
                       {
-                        "value": 15,
-                        "color": "yellow"
-                      },
-                      {
                         "value": 25,
-                        "color": "semi-dark-orange"
+                        "color": "yellow"
                       },
                       {
                         "value": 40,
@@ -623,7 +619,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\r\n  ROW_NUMBER() OVER (ORDER BY (t.metrics->'telemetry'->>'temperature')::numeric DESC) AS \"#\",\r\n  t.time AS \"Measurement Time\",\r\n  (t.metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry t\r\nWHERE $__timeFilter(t.time)\r\n  AND t.id = '$id'\r\n  AND t.metrics->'telemetry'->>'temperature' IS NOT NULL\r\nORDER BY \"Temperature\" DESC\r\nLIMIT 10;",
+                        "rawSql": "WITH telemetry_data AS (\r\n  SELECT\r\n    time,\r\n    NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS temperature\r\n  FROM device_telemetry\r\n  WHERE $__timeFilter(time)\r\n    AND id = '$id'\r\n)\r\n\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY temperature DESC) AS \"#\",\r\n  time AS \"Measurement Time\",\r\n  temperature AS \"Temperature\"\r\nFROM telemetry_data\r\nWHERE temperature IS NOT NULL\r\nORDER BY temperature DESC\r\nLIMIT 10;",
                         "sql": {
                           "columns": [
                             {
@@ -722,11 +718,7 @@
                               "value": 10
                             },
                             {
-                              "color": "#EAB839",
-                              "value": 15
-                            },
-                            {
-                              "color": "semi-dark-orange",
+                              "color": "yellow",
                               "value": 25
                             },
                             {
@@ -763,6 +755,258 @@
           }
         }
       },
+      "panel-17": {
+        "kind": "Panel",
+        "spec": {
+          "id": 17,
+          "title": "TDS",
+          "description": "Displays the last known TDS value in ppm for the specific device selected within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  time,\r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC\nLIMIT 1;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "/^value$/",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "ppm",
+                  "min": 0,
+                  "max": 500,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      },
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 150,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 300,
+                        "color": "red"
+                      },
+                      {
+                        "value": 500,
+                        "color": "purple"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-18": {
+        "kind": "Panel",
+        "spec": {
+          "id": 18,
+          "title": "Temperature",
+          "description": "Displays the last known TDS value in ppm for the specific device selected within the active timeframe.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT \r\n  time,\r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC\nLIMIT 1;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "last"
+                  ],
+                  "fields": "/^value$/",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      },
+                      {
+                        "value": -999,
+                        "color": "blue"
+                      },
+                      {
+                        "value": 10,
+                        "color": "green"
+                      },
+                      {
+                        "value": 25,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 40,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-2": {
         "kind": "Panel",
         "spec": {
@@ -786,7 +1030,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"Time\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time) \r\n  AND id = '$id'\r\nORDER BY time DESC;",
+                        "rawSql": "SELECT\r\n  time AS \"time\",\r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS value\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'temperature' IS NOT NULL\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -837,7 +1081,7 @@
                 "orientation": "auto",
                 "reduceOptions": {
                   "calcs": [
-                    "last"
+                    "lastNotNull"
                   ],
                   "fields": "/^value$/",
                   "values": false
@@ -845,7 +1089,7 @@
                 "segmentCount": 1,
                 "segmentSpacing": 0.3,
                 "shape": "gauge",
-                "showThresholdLabels": false,
+                "showThresholdLabels": true,
                 "showThresholdMarkers": true,
                 "sizing": "auto",
                 "sparkline": true,
@@ -918,7 +1162,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  CASE \r\n    WHEN t.time IS NULL THEN 0\r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0\r\n    ELSE 1\r\n  END AS \"Status\",\r\n  t.time AS \"Last seen\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT sub.time\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\nWHERE d.id = '$id';",
+                        "rawSql": "SELECT \r\n  CASE \r\n    WHEN time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0\r\n    ELSE 1\r\n  END AS \"Status\",\r\n  time AS \"Last seen\"\r\nFROM device_telemetry\r\nWHERE id = '$id'\r\nORDER BY time DESC\r\nLIMIT 1;",
                         "sql": {
                           "columns": [
                             {
@@ -1047,7 +1291,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT \r\n    id,\r\n    metrics,\r\n    CASE \r\n      WHEN time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1\r\n      ELSE 0\r\n    END AS status_code\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  COALESCE(t.status_code, 0) AS \"Status\",\r\n  CASE WHEN t.status_code = 1 THEN t.metrics->'networking'->>'SSID' ELSE NULL END AS \"SSID\",\r\n  CASE WHEN t.status_code = 1 THEN t.metrics->'networking'->>'local_ip' ELSE NULL END AS \"Local IP\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT \r\n    id,\r\n    time,\r\n    metrics\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\n\r\nSELECT \r\n  CASE \r\n    WHEN t.time IS NULL THEN 0\r\n    WHEN t.time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1\r\n    ELSE 0\r\n  END AS \"Status\",\r\n\r\n  t.metrics->'networking'->>'SSID' AS \"SSID\",\r\n  t.metrics->'networking'->>'local_ip' AS \"Local IP\"\r\n\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -1180,7 +1424,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT\r\n    id,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n    AND time >= NOW() - INTERVAL '30 days'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  null,\r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinate\",\r\n  TO_CHAR(d.created_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Date Registered\",\r\n  TO_CHAR(d.updated_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Last Updated\",\r\n  d.node_id AS \"Linked Node ID\", \r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT\r\n    id,\r\n    metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n)\r\nSELECT \r\n  null,\r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  TO_CHAR(d.created_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Date Registered\",\r\n  TO_CHAR(d.updated_at, 'YYYY-MM-DD HH24:MI:SS') || ' ' || current_setting('TIMEZONE') AS \"Last Updated\",\r\n  d.node_id AS \"Linked Node ID\", \r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN latest_telemetry t ON d.id = t.id\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -1304,7 +1548,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  d.latitude || ', ' || d.longitude AS \"Coordinate\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN (\r\n  SELECT id, time,\r\n    metrics->'telemetry'->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\nWHERE d.id = '$id';",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude AS \"latitude\",\r\n  d.longitude AS \"longitude\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN (\r\n  SELECT \r\n    id,\r\n    time,\r\n    metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n) t ON d.id = t.id\r\n\r\nWHERE d.id = '$id';",
                         "sql": {
                           "columns": [
                             {
@@ -1365,7 +1609,7 @@
                           "field": "Status",
                           "fixed": "blue"
                         },
-                        "opacity": 0.8,
+                        "opacity": 1,
                         "rotation": {
                           "fixed": 0,
                           "max": 360,
@@ -1402,7 +1646,7 @@
                     "layer-tooltip": true,
                     "location": {
                       "gazetteer": "public/build/gazetteer/countries.json",
-                      "lookup": "Coordinate",
+                      "lookup": "Coordinates",
                       "mode": "auto"
                     },
                     "name": "Node",
@@ -1542,7 +1786,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\",\r\n  (metrics->'telemetry'->>'temperature')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
+                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS \"TDS\",\r\n  NULLIF(metrics->'telemetry'->>'temperature', '')::numeric AS \"Temperature\"\r\nFROM device_telemetry\r\nWHERE \r\n  $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -1715,7 +1959,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  (metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\n  AND metrics->'telemetry'->>'tds' IS NOT NULL;",
+                        "rawSql": "SELECT \r\n  time AS \"time\",\r\n  NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS \"TDS\"\r\nFROM device_telemetry\r\nWHERE $__timeFilter(time)\r\n  AND id = '$id'\r\nORDER BY time ASC;",
                         "sql": {
                           "columns": [
                             {
@@ -1826,7 +2070,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\r\n  ROW_NUMBER() OVER (ORDER BY (t.metrics->'telemetry'->>'tds')::numeric DESC) AS \"#\",\r\n  t.time AS \"Measurement Time\",\r\n  (t.metrics->'telemetry'->>'tds')::numeric AS \"TDS\"\r\nFROM device_telemetry t\r\nWHERE $__timeFilter(t.time)\r\n  AND t.id = '$id'\r\n  AND t.metrics->'telemetry'->>'tds' IS NOT NULL\r\nORDER BY \"TDS\" DESC\r\nLIMIT 10;",
+                        "rawSql": "WITH telemetry_data AS (\r\n  SELECT\r\n    time,\r\n    NULLIF(metrics->'telemetry'->>'tds', '')::numeric AS tds\r\n  FROM device_telemetry\r\n  WHERE $__timeFilter(time)\r\n    AND id = '$id'\r\n)\r\n\r\nSELECT\r\n  ROW_NUMBER() OVER (ORDER BY tds DESC) AS \"#\",\r\n  time AS \"Measurement Time\",\r\n  tds AS \"TDS\"\r\nFROM telemetry_data\r\nWHERE tds IS NOT NULL\r\nORDER BY tds DESC\r\nLIMIT 10;",
                         "sql": {
                           "columns": [
                             {
@@ -1918,19 +2162,19 @@
                             },
                             {
                               "color": "green",
-                              "value": 1
+                              "value": 0
                             },
                             {
                               "color": "#EAB839",
-                              "value": 300
+                              "value": 150
                             },
                             {
                               "color": "red",
-                              "value": 600
+                              "value": 300
                             },
                             {
                               "color": "purple",
-                              "value": 900
+                              "value": 500
                             }
                           ]
                         }
@@ -1964,15 +2208,13 @@
       }
     },
     "layout": {
-      "kind": "RowsLayout",
+      "kind": "TabsLayout",
       "spec": {
-        "rows": [
+        "tabs": [
           {
-            "kind": "RowsLayoutRow",
+            "kind": "TabsLayoutTab",
             "spec": {
               "title": "Overview",
-              "collapse": false,
-              "fillScreen": false,
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -2035,10 +2277,10 @@
                         "x": 0,
                         "y": 7,
                         "width": 12,
-                        "height": 11,
+                        "height": 3,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-5"
+                          "name": "panel-17"
                         }
                       }
                     },
@@ -2048,10 +2290,36 @@
                         "x": 12,
                         "y": 7,
                         "width": 12,
+                        "height": 3,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-18"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 10,
+                        "width": 12,
                         "height": 11,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-6"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 10,
+                        "width": 12,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-5"
                         }
                       }
                     }
@@ -2061,11 +2329,9 @@
             }
           },
           {
-            "kind": "RowsLayoutRow",
+            "kind": "TabsLayoutTab",
             "spec": {
               "title": "Statistics",
-              "collapse": false,
-              "hideHeader": false,
               "layout": {
                 "kind": "RowsLayout",
                 "spec": {
@@ -2075,8 +2341,6 @@
                       "spec": {
                         "title": "General",
                         "collapse": false,
-                        "hideHeader": false,
-                        "fillScreen": true,
                         "layout": {
                           "kind": "GridLayout",
                           "spec": {
@@ -2217,7 +2481,7 @@
       {
         "title": "Back to Fleet",
         "type": "link",
-        "icon": "dashboard",
+        "icon": "cloud",
         "tooltip": "Back to fleet dashboard",
         "url": "/d/le6n2tq/iot-fleet-monitoring",
         "tags": [],
