@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "le6n2tq",
-    "generation": 16,
+    "generation": 17,
     "creationTimestamp": "2026-05-26T02:18:01Z",
     "labels": {},
     "annotations": {}
@@ -29,7 +29,7 @@
     ],
     "cursorSync": "Tooltip",
     "description": "Sentinel central fleet monitoring.",
-    "editable": false,
+    "editable": true,
     "elements": {
       "panel-1": {
         "kind": "Panel",
@@ -495,7 +495,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - ($node_offline_timeout || ' second')::interval\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1 \r\n    ELSE 0 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
                         "sql": {
                           "columns": [
                             {
