@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "lern8xx",
-    "generation": 13,
+    "generation": 20,
     "creationTimestamp": "2026-05-26T02:18:31Z",
     "labels": {},
     "annotations": {}
@@ -1002,6 +1002,167 @@
                   "fieldMinMax": false
                 },
                 "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-19": {
+        "kind": "Panel",
+        "spec": {
+          "id": 19,
+          "title": "Sensors",
+          "description": "Node's sensors status.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "grafana-postgresql-datasource",
+                      "version": "v0",
+                      "spec": {
+                        "dataset": "sentinel",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "WITH latest_telemetry AS (\r\n  SELECT \r\n    time as \"time\",\r\n    (metrics->'sensor_status')::jsonb AS sensor_status\r\n  FROM device_telemetry\r\n  WHERE id = '$id'\r\n  ORDER BY time DESC\r\n  LIMIT 1\r\n),\r\njoined_data AS (\r\n  SELECT\r\n    t.time,\r\n    t.sensor_status,\r\n    CASE \r\n      WHEN t.time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1\r\n      ELSE 0\r\n    END AS is_online\r\n  FROM devices d\r\n  LEFT JOIN latest_telemetry t ON 1=1\r\n  WHERE d.id = '$id'\r\n)\r\n\r\nSELECT\r\n  NULL,\r\n  jd.time AS \"time\",\r\n  CASE \r\n    WHEN jd.is_online = 1 AND jd.sensor_status IS NOT NULL THEN jd.sensor_status\r\n    WHEN jd.is_online = 0 AND jd.sensor_status IS NOT NULL THEN (\r\n      SELECT jsonb_object_agg(key, null)\r\n      FROM jsonb_each_text(jd.sensor_status)\r\n    )\r\n    ELSE '{\"N/A\": null}'::jsonb\r\n  END AS sensor_status\r\nFROM joined_data jd;",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "grafana-postgresql-datasource-1"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "extractFields",
+                  "spec": {
+                    "options": {
+                      "delimiter": ",",
+                      "format": "json",
+                      "keepTime": false,
+                      "replace": true,
+                      "source": "sensor_status"
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "transpose",
+                  "spec": {
+                    "options": {
+                      "emptyValue": "null",
+                      "firstFieldName": "Sensor",
+                      "restFieldsName": "Status"
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "---",
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "color-text"
+                    },
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Status 1"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Status"
+                      },
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "options": {
+                              "false": {
+                                "color": "red",
+                                "index": 1,
+                                "text": "Disconnected"
+                              },
+                              "true": {
+                                "color": "green",
+                                "index": 0,
+                                "text": "Connected"
+                              }
+                            },
+                            "type": "value"
+                          }
+                        ]
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-text"
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -2225,7 +2386,7 @@
                         "x": 0,
                         "y": 0,
                         "width": 6,
-                        "height": 7,
+                        "height": 6,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-1"
@@ -2238,7 +2399,7 @@
                         "x": 6,
                         "y": 0,
                         "width": 6,
-                        "height": 7,
+                        "height": 6,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-2"
@@ -2250,32 +2411,6 @@
                       "spec": {
                         "x": 12,
                         "y": 0,
-                        "width": 5,
-                        "height": 7,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-3"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 17,
-                        "y": 0,
-                        "width": 7,
-                        "height": 7,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-4"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 7,
                         "width": 12,
                         "height": 3,
                         "element": {
@@ -2288,7 +2423,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 7,
+                        "y": 3,
                         "width": 12,
                         "height": 3,
                         "element": {
@@ -2301,12 +2436,25 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 10,
-                        "width": 12,
-                        "height": 11,
+                        "y": 6,
+                        "width": 5,
+                        "height": 7,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-6"
+                          "name": "panel-3"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 5,
+                        "y": 6,
+                        "width": 7,
+                        "height": 7,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
                         }
                       }
                     },
@@ -2314,12 +2462,38 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 10,
+                        "y": 6,
+                        "width": 12,
+                        "height": 7,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-19"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 13,
                         "width": 12,
                         "height": 11,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-5"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 13,
+                        "width": 12,
+                        "height": 11,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
                         }
                       }
                     }

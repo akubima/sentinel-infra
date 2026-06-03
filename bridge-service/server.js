@@ -93,10 +93,31 @@ mqttClient.on('message', async (topic, payload) => {
         }
 
         const deviceId = deviceResult.rows[0].id;
-        await pool.query(
-            'INSERT INTO device_telemetry (time, id, metrics) VALUES (NOW(), $1, $2)',
-            [deviceId, JSON.stringify(data)]
-        );
+
+        let telemetryTime = null;
+        if (data.timestamp !== undefined && data.timestamp !== null) {
+            const parsed = Number(data.timestamp);
+            if (!isNaN(parsed) && typeof data.timestamp !== 'boolean') {
+                telemetryTime = new Date(parsed < 99999999999 ? parsed * 1000 : parsed);
+            } else {
+                telemetryTime = new Date(data.timestamp);
+            }
+            if (isNaN(telemetryTime.getTime())) {
+                telemetryTime = null;
+            }
+        }
+
+        if (telemetryTime) {
+            await pool.query(
+                'INSERT INTO device_telemetry (time, id, metrics) VALUES ($1, $2, $3)',
+                [telemetryTime, deviceId, JSON.stringify(data)]
+            );
+        } else {
+            await pool.query(
+                'INSERT INTO device_telemetry (time, id, metrics) VALUES (NOW(), $1, $2)',
+                [deviceId, JSON.stringify(data)]
+            );
+        }
 
         console.log(`Telemetry saved for ${nodeId} by instance ${instanceId}`);
     } catch (err) {

@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "le6n2tq",
-    "generation": 16,
-    "creationTimestamp": "2026-05-26T02:18:01Z",
+    "generation": 3,
+    "creationTimestamp": "2026-06-03T03:21:11Z",
     "labels": {},
     "annotations": {}
   },
@@ -54,7 +54,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n\r\n  t.time AS \"Last Seen\",\r\n\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n\r\n  d.node_id AS \"Linked Node ID\",\r\n  t.firmware_version AS \"Firmware Version\",\r\n\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time < NOW() - ($node_offline_timeout || ' second')::interval THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n\r\n  t.time AS \"Last Seen\",\r\n\r\n  d.location AS \"Location\",\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n\r\n  d.node_id AS \"Linked Node ID\",\r\n  t.firmware_version AS \"Firmware Version\",\r\n\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\"\r\n\r\nFROM devices d\r\n\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true\r\n\r\nORDER BY d.created_at DESC;",
                         "sql": {
                           "columns": [
                             {
@@ -495,7 +495,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  d.latitude || ', ' || d.longitude AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    ELSE 1 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n    AND sub.time >= NOW() - ($node_offline_timeout || ' second')::interval\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
+                        "rawSql": "SELECT \r\n  d.id AS \"ID\",\r\n  d.name AS \"Name\",\r\n  d.location AS \"Location\",\r\n  d.latitude,\r\n  d.longitude,\r\n  CONCAT(d.latitude, ', ', d.longitude) AS \"Coordinates\",\r\n  d.node_id AS \"Linked Node ID\",\r\n  d.created_at AS \"Date Registered\",\r\n  d.updated_at AS \"Last Updated\",\r\n  CASE \r\n    WHEN t.time IS NULL THEN 0 \r\n    WHEN t.time >= NOW() - ($node_offline_timeout || ' second')::interval THEN 1 \r\n    ELSE 0 \r\n  END AS \"Status\",\r\n  t.time AS \"Last Seen\",\r\n  t.firmware_version AS \"Firmware Version\"\r\nFROM devices d\r\nLEFT JOIN LATERAL (\r\n  SELECT \r\n    sub.time,\r\n    sub.metrics->>'firmware_version' AS firmware_version\r\n  FROM device_telemetry sub\r\n  WHERE sub.id = d.id\r\n  ORDER BY sub.time DESC\r\n  LIMIT 1\r\n) t ON true;",
                         "sql": {
                           "columns": [
                             {
@@ -3047,10 +3047,10 @@
         "kind": "ConstantVariable",
         "spec": {
           "name": "node_offline_timeout",
-          "query": "60",
+          "query": "30",
           "current": {
-            "text": "60",
-            "value": "60"
+            "text": "30",
+            "value": "30"
           },
           "label": "Node Offline Timeout",
           "hide": "hideVariable",
