@@ -37,4 +37,8 @@ data:
             <name>dfs.datanode.data.dir</name>
             <value>file:///hadoop/dfs/data</value>
         </property>
+        <property>
+            <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+            <value>false</value>
+        </property>
     </configuration>
