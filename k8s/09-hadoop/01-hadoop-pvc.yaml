@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hadoop-namenode-pvc
+  namespace: sentinel-infra
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-retained
+  resources:
+    requests:
+      storage: 5Gi

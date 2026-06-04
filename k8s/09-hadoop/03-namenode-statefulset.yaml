@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hadoop-namenode
+  namespace: sentinel-infra
+spec:
+  serviceName: hadoop-namenode-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hadoop-namenode
+  template:
+    metadata:
+      labels:
+        app: hadoop-namenode
+    spec:
+      containers:
+        - name: namenode
+          image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+          env:
+            - name: CLUSTER_NAME
+              value: "sentinel-hdfs"
+            - name: CORE_CONF_fs_defaultFS
+              value: "hdfs://hadoop-namenode-service:9000"
+            - name: HDFS_CONF_dfs_replication
+              value: "1"
+            - name: HDFS_CONF_dfs_permissions
+              value: "false"
+          ports:
+            - containerPort: 9000
+              name: fs
+            - containerPort: 9870
+              name: web
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: namenode-storage
+              mountPath: /hadoop/dfs/name
+      volumes:
+        - name: namenode-storage
+          persistentVolumeClaim:
+            claimName: hadoop-namenode-pvc
