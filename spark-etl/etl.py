@@ -1,6 +1,7 @@
 import os
 import sys
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import to_date
 
 def main():
     # Retrieve Database credentials from environment variables
@@ -47,13 +48,17 @@ def main():
 
         # 2. Write the data to HDFS in Parquet format
         # Parquet is a compressed columnar format that is highly optimized for Hadoop queries.
-        # We partition the data by device ID for faster future querying.
+        # We partition the data by date and sort within partitions by device ID for optimal storage and query performance.
         hdfs_path = "hdfs://hadoop-namenode-service:9000/user/sentinel/telemetry"
         print(f"Writing data to HDFS at: {hdfs_path}")
         
-        df.write \
+        df_partitioned = df \
+            .withColumn("partition_date", to_date("time")) \
+            .sortWithinPartitions("id")
+        
+        df_partitioned.write \
             .mode("append") \
-            .partitionBy("id") \
+            .partitionBy("partition_date") \
             .parquet(hdfs_path)
 
         print("Export completed successfully.")
