@@ -43,6 +43,9 @@ graph TD
 |   |-- Dockerfile
 |   |-- package.json
 |   `-- server.js
+|-- spark-etl/                       # PySpark batch telemetry exporter
+|   |-- Dockerfile
+|   `-- etl.py
 |-- etc/
 |   |-- deployment-reference.sh       # Raw bare-metal bootstrap reference
 |   |-- vault-certmanager-403-troubleshooting.md
@@ -56,7 +59,8 @@ graph TD
     |-- 05-registry/                  # In-cluster registry on NodePort 30500
     |-- 06-grafana/                   # Grafana service and deployment
     |-- 07-bridge-service/            # Bridge service secrets, service, deployment
-    `-- 08-cloudflared/               # Cloudflare Tunnel token and deployment
+    |-- 08-cloudflared/               # Cloudflare Tunnel token and deployment
+    `-- 09-hadoop/                    # Simple Hadoop HDFS storage
 ```
 
 The numbered `k8s/` directories are ordered by dependency: namespaces, storage and networking, secrets, database, then applications.
@@ -324,6 +328,7 @@ kubectl apply -f k8s/05-registry/
 kubectl apply -f k8s/06-grafana/
 kubectl apply -f k8s/07-bridge-service/
 kubectl apply -f k8s/08-cloudflared/
+kubectl apply -f k8s/09-hadoop/
 ```
 
 ### 3. Build and Push the Bridge Image
@@ -336,6 +341,16 @@ sudo apt install -y docker.io
 sudo docker build -t bridge-service:1.0.0 bridge-service/
 sudo docker tag bridge-service:1.0.0 localhost:30500/bridge-service:1.0.0
 sudo docker push localhost:30500/bridge-service:1.0.0
+```
+
+### 4. Build and Push the Spark ETL Image
+
+The Spark ETL CronJob pulls `localhost:30500/spark-telemetry-etl:1.0.0`.
+
+```bash
+sudo docker build -t spark-telemetry-etl:1.0.0 spark-etl/
+sudo docker tag spark-telemetry-etl:1.0.0 localhost:30500/spark-telemetry-etl:1.0.0
+sudo docker push localhost:30500/spark-telemetry-etl:1.0.0
 ```
 
 If Docker tries HTTPS against the local HTTP registry, create Docker auth config for `localhost:30500`:

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spark-telemetry-etl
+  namespace: sentinel-infra
+spec:
+  schedule: "0 * * * *" # Runs every hour at minute 0
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: spark-telemetry-etl
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: registry-secret
+          containers:
+            - name: spark-etl
+              image: localhost:30500/spark-telemetry-etl:1.0.0
+              imagePullPolicy: Always
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 512Mi
+                limits:
+                  cpu: 1000m
+                  memory: 1Gi
+              env:
+                - name: PGHOST
+                  value: "postgres-rw.sentinel-infra.svc.cluster.local"
+                - name: PGDATABASE
+                  value: "sentinel"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-bridge-rw-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-bridge-rw-secret
+                      key: password

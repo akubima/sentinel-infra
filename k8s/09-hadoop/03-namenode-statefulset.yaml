@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hadoop-namenode
+  namespace: sentinel-infra
+spec:
+  serviceName: hadoop-namenode-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hadoop-namenode
+  template:
+    metadata:
+      labels:
+        app: hadoop-namenode
+    spec:
+      initContainers:
+        - name: format-namenode
+          image: ghcr.io/apache/hadoop:3.5.0
+          securityContext:
+            runAsUser: 0
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              rm -rf /hadoop/dfs/name/lost+found
+              if [ ! -d /hadoop/dfs/name/current ]; then
+                echo "Formatting NameNode..."
+                /opt/hadoop/bin/hdfs namenode -format -clusterId sentinel-hdfs -force -nonInteractive
+              else
+                echo "NameNode already formatted."
+              fi
+              chown -R hadoop:hadoop /hadoop/dfs/name
+          volumeMounts:
+            - name: namenode-storage
+              mountPath: /hadoop/dfs/name
+            - name: hadoop-config-vol
+              mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+              subPath: core-site.xml
+            - name: hadoop-config-vol
+              mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+              subPath: hdfs-site.xml
+      containers:
+        - name: namenode
+          image: ghcr.io/apache/hadoop:3.5.0
+          command: ["/opt/hadoop/bin/hdfs", "namenode"]
+          ports:
+            - containerPort: 9000
+              name: fs
+            - containerPort: 9870
+              name: web
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: namenode-storage
+              mountPath: /hadoop/dfs/name
+            - name: hadoop-config-vol
+              mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+              subPath: core-site.xml
+            - name: hadoop-config-vol
+              mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+              subPath: hdfs-site.xml
+      volumes:
+        - name: namenode-storage
+          persistentVolumeClaim:
+            claimName: hadoop-namenode-pvc
+        - name: hadoop-config-vol
+          configMap:
+            name: hadoop-config
