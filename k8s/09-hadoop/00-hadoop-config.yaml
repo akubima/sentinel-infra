@@ -26,6 +26,10 @@ data:
             <value>false</value>
         </property>
         <property>
+            <name>dfs.namenode.rpc-bind-host</name>
+            <value>0.0.0.0</value>
+        </property>
+        <property>
             <name>dfs.namenode.name.dir</name>
             <value>file:///hadoop/dfs/name</value>
         </property>
