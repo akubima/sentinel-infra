@@ -30,7 +30,7 @@ spec:
               else
                 echo "NameNode already formatted."
               fi
-              chown -R 1000:1000 /hadoop/dfs/name
+              chown -R hadoop:hadoop /hadoop/dfs/name
           volumeMounts:
             - name: namenode-storage
               mountPath: /hadoop/dfs/name
