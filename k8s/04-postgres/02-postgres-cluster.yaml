@@ -146,6 +146,8 @@ spec:
   postgresql:
     shared_preload_libraries:
       - "timescaledb"
+    parameters:
+      timezone: "UTC"
   storage:
     resizeInUseVolumes: true
     size: 10Gi
