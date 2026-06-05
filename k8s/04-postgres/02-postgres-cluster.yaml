@@ -108,7 +108,9 @@ spec:
           CREATE TABLE device_telemetry (
               time    TIMESTAMPTZ NOT NULL,
               id      VARCHAR(26) NOT NULL,
-              metrics JSONB       NOT NULL
+              metrics JSONB       NOT NULL,
+          
+              CONSTRAINT uq_device_time UNIQUE (id, time)
           );
         - ALTER TABLE device_telemetry OWNER TO sentinel;
         # Nyalakan fitur hypertable TimescaleDB bawaan
@@ -144,6 +146,8 @@ spec:
   postgresql:
     shared_preload_libraries:
       - "timescaledb"
+    parameters:
+      timezone: "UTC"
   storage:
     resizeInUseVolumes: true
     size: 10Gi
