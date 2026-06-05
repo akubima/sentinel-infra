@@ -107,17 +107,12 @@ mqttClient.on('message', async (topic, payload) => {
             }
         }
 
-        if (telemetryTime) {
-            await pool.query(
-                'INSERT INTO device_telemetry (time, id, metrics) VALUES ($1, $2, $3)',
-                [telemetryTime, deviceId, JSON.stringify(data)]
-            );
-        } else {
-            await pool.query(
-                'INSERT INTO device_telemetry (time, id, metrics) VALUES (NOW(), $1, $2)',
-                [deviceId, JSON.stringify(data)]
-            );
-        }
+        await pool.query(
+            `INSERT INTO device_telemetry (time, id, metrics)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (id, time) DO NOTHING`,
+            [telemetryTime ?? new Date(), deviceId, data]
+        );
 
         console.log(`Telemetry saved for ${nodeId} by instance ${instanceId}`);
     } catch (err) {
