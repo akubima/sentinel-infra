@@ -49,7 +49,7 @@ def main():
         # 2. Write the data to HDFS in Parquet format
         # Parquet is a compressed columnar format that is highly optimized for Hadoop queries.
         # We partition the data by date and sort within partitions by device ID for optimal storage and query performance.
-        hdfs_path = "hdfs://hadoop-namenode-service:9000/user/sentinel/telemetry"
+        hdfs_path = "hdfs://hadoop-service:9000/user/sentinel/telemetry"
         print(f"Writing data to HDFS at: {hdfs_path}")
         
         df_partitioned = df \
