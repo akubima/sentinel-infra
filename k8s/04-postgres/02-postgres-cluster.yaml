@@ -150,5 +150,5 @@ spec:
       timezone: "UTC"
   storage:
     resizeInUseVolumes: true
-    size: 10Gi
+    size: 5Gi
     storageClass: longhorn-retained

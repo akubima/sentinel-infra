@@ -4,7 +4,7 @@ metadata:
   name: hadoop-datanode
   namespace: sentinel-infra
 spec:
-  serviceName: hadoop-namenode-service
+  serviceName: hadoop-service
   replicas: 2
   selector:
     matchLabels:
@@ -59,4 +59,4 @@ spec:
         storageClassName: longhorn-retained
         resources:
           requests:
-            storage: 15Gi
+            storage: 5Gi

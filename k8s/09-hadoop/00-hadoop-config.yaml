@@ -10,7 +10,7 @@ data:
     <configuration>
         <property>
             <name>fs.defaultFS</name>
-            <value>hdfs://hadoop-namenode-service:9000</value>
+            <value>hdfs://hadoop-service:9000</value>
         </property>
     </configuration>
   hdfs-site.xml: |

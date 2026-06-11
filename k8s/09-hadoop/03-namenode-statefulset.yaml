@@ -4,7 +4,7 @@ metadata:
   name: hadoop-namenode
   namespace: sentinel-infra
 spec:
-  serviceName: hadoop-namenode-service
+  serviceName: hadoop-service
   replicas: 1
   selector:
     matchLabels:

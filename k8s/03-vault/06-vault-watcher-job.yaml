@@ -63,9 +63,10 @@ spec:
                   VAULT0_STATUS_JSON=$(kubectl exec -n vault vault-0 -- vault status -format=json 2>/dev/null)
                   VAULT0_EXIT_CODE=$?
 
-                  if [ $VAULT0_EXIT_CODE -eq 0 ] || [ $VAULT0_EXIT_CODE -eq 2 ]; then
+                  if [ $VAULT0_EXIT_CODE -eq 0 ] || [ $VAULT0_EXIT_CODE -eq 2 ] || [ $VAULT0_EXIT_CODE -eq 1 ]; then
                     VAULT0_INIT_STATUS=$(echo "$VAULT0_STATUS_JSON" | jq -r '.initialized' 2>/dev/null)
-                  else
+                  fi
+                  if [ "$VAULT0_INIT_STATUS" != "true" ] && [ "$VAULT0_INIT_STATUS" != "false" ]; then
                     VAULT0_INIT_STATUS="UNKNOWN_ERROR"
                     echo "Failed to get vault-0 status. Exit code: $VAULT0_EXIT_CODE"
                   fi
