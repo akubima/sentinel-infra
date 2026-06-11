@@ -7,7 +7,7 @@ import {
   Activity,
   ChevronDown,
   Globe
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { Button } from './components/ui/button'
 import {
   DropdownMenu,
