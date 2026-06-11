@@ -17,8 +17,10 @@ graph TD
     AWSIoT --> Bridge[Bridge service]
     Bridge --> Postgres[(CNPG PostgreSQL + TimescaleDB/PostGIS)]
     Grafana[Grafana] --> Postgres
+    SentinelApp[Sentinel Web App] --> Postgres
     Cloudflared[Cloudflare Tunnel] --> Grafana
     Cloudflared --> Bridge
+    Cloudflared --> SentinelApp
 
     subgraph Secrets
         Vault[HashiCorp Vault] --> ESO[External Secrets Operator]
@@ -27,6 +29,7 @@ graph TD
         K8sSecrets --> Grafana
         K8sSecrets --> Postgres
         K8sSecrets --> Cloudflared
+        K8sSecrets --> SentinelApp
     end
 
     subgraph Storage
@@ -43,6 +46,10 @@ graph TD
 |   |-- Dockerfile
 |   |-- package.json
 |   `-- server.js
+|-- sentinel-app/                    # Nuxt 3 water telemetry dashboard
+|   |-- Dockerfile
+|   |-- package.json
+|   `-- app/
 |-- spark-etl/                       # PySpark batch telemetry exporter
 |   |-- Dockerfile
 |   `-- etl.py
@@ -60,7 +67,8 @@ graph TD
     |-- 06-grafana/                   # Grafana service and deployment
     |-- 07-bridge-service/            # Bridge service secrets, service, deployment
     |-- 08-cloudflared/               # Cloudflare Tunnel token and deployment
-    `-- 09-hadoop/                    # Simple Hadoop HDFS storage
+    |-- 09-hadoop/                    # Simple Hadoop HDFS storage
+    `-- 10-sentinel-app/              # Sentinel Web App service and deployment
 ```
 
 The numbered `k8s/` directories are ordered by dependency: namespaces, storage and networking, secrets, database, then applications.
@@ -329,6 +337,7 @@ kubectl apply -f k8s/06-grafana/
 kubectl apply -f k8s/07-bridge-service/
 kubectl apply -f k8s/08-cloudflared/
 kubectl apply -f k8s/09-hadoop/
+kubectl apply -f k8s/10-sentinel-app/
 ```
 
 ### 3. Build and Push the Bridge Image
@@ -351,6 +360,16 @@ The Spark ETL CronJob pulls `localhost:30500/spark-telemetry-etl:1.0.0`.
 sudo docker build -t spark-telemetry-etl:1.0.0 spark-etl/
 sudo docker tag spark-telemetry-etl:1.0.0 localhost:30500/spark-telemetry-etl:1.0.0
 sudo docker push localhost:30500/spark-telemetry-etl:1.0.0
+```
+
+### 5. Build and Push the Sentinel App Image
+
+The Sentinel App deployment pulls `localhost:30500/sentinel-app:1.0.0`.
+
+```bash
+sudo docker build -t sentinel-app:1.0.0 sentinel-app/
+sudo docker tag sentinel-app:1.0.0 localhost:30500/sentinel-app:1.0.0
+sudo docker push localhost:30500/sentinel-app:1.0.0
 ```
 
 If Docker tries HTTPS against the local HTTP registry, create Docker auth config for `localhost:30500`:
@@ -412,6 +431,7 @@ Restart applications after secret or image changes:
 kubectl rollout restart deployment/grafana -n sentinel-infra
 kubectl rollout restart deployment/bridge -n sentinel-infra
 kubectl rollout restart deployment/cloudflared -n sentinel-infra
+kubectl rollout restart deployment/sentinel-app -n sentinel-infra
 ```
 
 Troubleshoot Longhorn mount issues:
