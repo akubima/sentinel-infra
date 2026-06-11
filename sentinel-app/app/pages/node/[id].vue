@@ -13,7 +13,7 @@ import {
   Compass,
   Map,
   Navigation
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { 
   getTdsClass as getTdsClassUtil, 
   getTempClass as getTempClassUtil, 

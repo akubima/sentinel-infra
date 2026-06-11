@@ -13,7 +13,7 @@ import {
   ChevronLeft,
   AlertCircle,
   Clock
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { getTdsValColor, getTempValColor } from '~/utils/telemetry'
 import { formatTelemetryDate } from '~/utils/date'
 import { useGeolocation } from '~/composables/useGeolocation'
