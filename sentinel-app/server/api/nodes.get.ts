@@ -31,13 +31,8 @@ export default defineEventHandler(async (event) => {
     let sql = `
       SELECT 
         d.id, 
-        d.node_id, 
         d.name, 
         d.location, 
-        d.latitude::float as latitude, 
-        d.longitude::float as longitude, 
-        d.created_at, 
-        d.updated_at,
         (t.metrics->'telemetry'->>'tds')::float as tds,
         (t.metrics->'telemetry'->>'temperature')::float as temperature,
         t.time as telemetry_time
@@ -45,7 +40,7 @@ export default defineEventHandler(async (event) => {
       LEFT JOIN LATERAL (
         SELECT sub.metrics, sub.time
         FROM device_telemetry sub
-        WHERE sub.id = d.id
+        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '30 days'
         ORDER BY sub.time DESC
         LIMIT 1
       ) t ON true
@@ -66,7 +61,7 @@ export default defineEventHandler(async (event) => {
     const total = parseInt(countResult.rows[0].count);
     
     // Append pagination controls via parameterized variables (prevents SQL injection)
-    sql += ` ORDER BY d.name ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    sql += ` ORDER BY d.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
     
     const result = await pool.query(sql, params);
@@ -78,13 +73,8 @@ export default defineEventHandler(async (event) => {
       
       return {
         id: row.id,
-        node_id: row.node_id,
         name: row.name,
         location: row.location,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
         telemetry: {
           tds: row.tds !== null ? parseFloat(row.tds.toFixed(1)) : null,
           temperature: row.temperature !== null ? parseFloat(row.temperature.toFixed(1)) : null,

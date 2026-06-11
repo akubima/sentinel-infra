@@ -55,7 +55,7 @@ const fetchNodes = async (silent = false) => {
     }
   } catch (err: any) {
     console.error('Error fetching nodes:', err)
-    fetchError.value = err.statusMessage || t('failedLoadNodes')
+    fetchError.value = t('failedLoadNodes')
   } finally {
     if (!silent) loading.value = false
   }

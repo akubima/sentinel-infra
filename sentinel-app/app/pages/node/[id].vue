@@ -190,7 +190,7 @@ const fetchNodeDetails = async (silent = false) => {
     }
   } catch (err: any) {
     console.error('Error fetching node details:', err)
-    fetchError.value = err.statusMessage || t('failedLoadNodeDetails')
+    fetchError.value = t('failedLoadNodeDetails')
   } finally {
     if (!silent) loading.value = false
   }
