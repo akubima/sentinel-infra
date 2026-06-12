@@ -9,6 +9,8 @@ export default defineEventHandler(async (event) => {
     // Limit search to 100 characters and sanitize to alphanumeric, spaces, and hyphens/underscores
     search = query.search.slice(0, 100).replace(/[^\w\s\-_]/g, '');
   }
+
+  const status = query.status === 'online' ? 'online' : '';
   
   let page = parseInt(query.page as string) || 1;
   if (page < 1) page = 1;
@@ -49,15 +51,35 @@ export default defineEventHandler(async (event) => {
     `;
     
     const params: any[] = [];
+    const whereClauses: string[] = [];
+    
     if (search) {
-      sql += ` WHERE d.name ILIKE $1 OR d.location ILIKE $1`;
       params.push(`%${search}%`);
+      whereClauses.push(`(d.name ILIKE $${params.length} OR d.location ILIKE $${params.length})`);
+    }
+    
+    if (status === 'online') {
+      whereClauses.push(`t.time >= NOW() - INTERVAL '5 minutes'`);
+    }
+    
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ` + whereClauses.join(' AND ');
     }
     
     // Count total rows for pagination summary
-    let countSql = `SELECT COUNT(*) FROM devices d`;
-    if (search) {
-      countSql += ` WHERE d.name ILIKE $1 OR d.location ILIKE $1`;
+    let countSql = `
+      SELECT COUNT(*) 
+      FROM devices d
+      LEFT JOIN LATERAL (
+        SELECT sub.time
+        FROM device_telemetry sub
+        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '7 days'
+        ORDER BY sub.time DESC
+        LIMIT 1
+      ) t ON true
+    `;
+    if (whereClauses.length > 0) {
+      countSql += ` WHERE ` + whereClauses.join(' AND ');
     }
     const countResult = await pool.query(countSql, params);
     const total = parseInt(countResult.rows[0].count);
