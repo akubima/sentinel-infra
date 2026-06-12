@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentinel-app
+  namespace: sentinel-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentinel-app
+  template:
+    metadata:
+      annotations:
+        secret.reloader.stakater.com/reload: "postgres-grafana-ro-secret"
+      labels:
+        app: sentinel-app
+    spec:
+      imagePullSecrets:
+        - name: registry-secret
+      containers:
+        - name: sentinel-app
+          image: localhost:30500/sentinel-app:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PGHOST
+              value: "postgres-ro.sentinel-infra.svc.cluster.local"
+            - name: PGDATABASE
+              value: "sentinel"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-grafana-ro-secret
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-grafana-ro-secret
+                  key: password
+          livenessProbe:
+            httpGet:
+              path: /robots.txt
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /robots.txt
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
