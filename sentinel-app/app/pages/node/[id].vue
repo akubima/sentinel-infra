@@ -350,12 +350,12 @@ const tempGaugePercent = computed(() => {
             <span 
               :class="[
                 'text-xs font-sans font-bold px-2 py-0.5 rounded border',
-                (node.telemetry.status === 'online' && node.telemetry.tds !== null)
+                (node.telemetry.status === 'online' && (node.telemetry.sensorStatus?.tds ?? (node.telemetry.tds !== null)))
                   ? 'text-emerald-500 bg-emerald-500/5 border-emerald-500/10'
                   : 'text-rose-500 bg-rose-500/5 border-rose-500/10'
               ]"
             >
-              {{ (node.telemetry.status === 'online' && node.telemetry.tds !== null) ? t('connected') : t('disconnected') }}
+              {{ (node.telemetry.status === 'online' && (node.telemetry.sensorStatus?.tds ?? (node.telemetry.tds !== null))) ? t('connected') : t('disconnected') }}
             </span>
           </div>
 
@@ -410,12 +410,12 @@ const tempGaugePercent = computed(() => {
             <span 
               :class="[
                 'text-xs font-sans font-bold px-2 py-0.5 rounded border',
-                (node.telemetry.status === 'online' && node.telemetry.temperature !== null)
+                (node.telemetry.status === 'online' && (node.telemetry.sensorStatus?.temp ?? (node.telemetry.temperature !== null)))
                   ? 'text-emerald-500 bg-emerald-500/5 border-emerald-500/10'
                   : 'text-rose-500 bg-rose-500/5 border-rose-500/10'
               ]"
             >
-              {{ (node.telemetry.status === 'online' && node.telemetry.temperature !== null) ? t('connected') : t('disconnected') }}
+              {{ (node.telemetry.status === 'online' && (node.telemetry.sensorStatus?.temp ?? (node.telemetry.temperature !== null))) ? t('connected') : t('disconnected') }}
             </span>
           </div>
 
