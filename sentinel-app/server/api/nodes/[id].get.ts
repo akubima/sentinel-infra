@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     
     const row = nodeResult.rows[0];
     const telemetryTime = row.telemetry_time ? new Date(row.telemetry_time) : null;
-    const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 300000); // 5 minutes threshold
+    const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 30000); // 30 seconds threshold
     
     const nodeData = {
       id: row.id,
