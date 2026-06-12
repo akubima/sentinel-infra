@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useColorMode } from '@vueuse/core'
 import { 
   Sun, 
@@ -31,10 +33,29 @@ const { lang, setLang, t } = useI18n()
 const currentYear = new Date().getFullYear()
 const version = `v${pkg.version || '0.0.0'}`
 
-// Load Google Fonts globally
+const router = useRouter()
+const pageLoading = ref(false)
+
+router.beforeEach((to, from, next) => {
+  pageLoading.value = true
+  next()
+})
+
+router.afterEach(() => {
+  setTimeout(() => {
+    pageLoading.value = false
+  }, 250)
+})
+
+// Load Google Fonts and favicon globally
 useHead({
   title: () => t('heroTitle'),
   link: [
+    {
+      rel: 'icon',
+      type: 'image/svg+xml',
+      href: '/favicon.svg'
+    },
     {
       rel: 'preconnect',
       href: 'https://fonts.googleapis.com'
@@ -46,7 +67,7 @@ useHead({
     },
     {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap'
+      href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap'
     }
   ]
 })
@@ -56,6 +77,39 @@ useHead({
   <div class="min-h-screen w-full relative futuristic-grid bg-background transition-colors duration-300 flex flex-col font-sans selection:bg-primary/30">
     <!-- Sci-fi background glow effects -->
     <div class="absolute inset-0 radial-glow pointer-events-none z-0"></div>
+
+    <!-- Full-page route loader overlay -->
+    <Transition name="fade-overlay">
+      <div v-if="pageLoading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md select-none pointer-events-auto">
+        <div class="relative flex items-center justify-center w-24 h-24">
+          <!-- Outer spinning tech ring -->
+          <div class="absolute w-20 h-20 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+          <!-- Inner breathing pulse glow -->
+          <div class="absolute w-14 h-14 rounded-full bg-primary/5 border border-primary/30 animate-pulse"></div>
+          <!-- Center logo/droplet SVG -->
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round" 
+            class="w-8 h-8 text-primary relative z-10 animate-pulse"
+          >
+            <path d="M12 2C8.5 6.5 5 10.2 5 14c0 3.86 3.14 7 7 7s7-3.14 7-7c0-3.8-5-7.5-7-12z" stroke-width="1.8" />
+            <circle cx="12" cy="9.5" r="1.2" fill="currentColor" />
+            <circle cx="9" cy="14.5" r="1.2" fill="currentColor" />
+            <circle cx="15" cy="14.5" r="1.2" fill="currentColor" />
+            <path d="M12 9.5L9 14.5M12 9.5l3 5M9 14.5h6" stroke-width="1.2" class="opacity-80" />
+            <path d="M7 17.5c1.5-1 2.5 1 4 0s2.5-1 4 0" stroke-width="1" class="opacity-75" />
+          </svg>
+        </div>
+        <div class="mt-4 text-xs font-bold tracking-widest text-primary/80 uppercase font-mono animate-pulse">
+          Loading System...
+        </div>
+      </div>
+    </Transition>
 
     <!-- Global Header -->
     <header class="sticky top-0 z-40 w-full border-b border-border/40 glass-panel backdrop-blur-lg">
@@ -182,5 +236,15 @@ useHead({
 .page-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+/* Full screen loading transition overlay styles */
+.fade-overlay-enter-active,
+.fade-overlay-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-overlay-enter-from,
+.fade-overlay-leave-to {
+  opacity: 0;
 }
 </style>

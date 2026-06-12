@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
       LEFT JOIN LATERAL (
         SELECT sub.metrics, sub.time
         FROM device_telemetry sub
-        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '30 days'
+        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '7 days'
         ORDER BY sub.time DESC
         LIMIT 1
       ) t ON true

@@ -12,7 +12,7 @@ const translations = {
     nearestNode: "Node terdekat",
     searchPlaceholder: "Cari node berdasarkan nama atau lokasi...",
     failedFetch: "Gagal Mengambil Data Telemetri",
-    failedLoadNodes: "Gagal memuat telemetry node dari server.",
+    failedLoadNodes: "Gagal memuat telemetry node.",
     noNodesFound: "Tidak ada node yang ditemukan",
     searchNoMatch: "Pencarian Anda \"{search}\" tidak cocok dengan perangkat mana pun di database.",
     tdsTitle: "Zat Terlarut (TDS)",
@@ -25,7 +25,7 @@ const translations = {
     themeLight: "Mode Terang",
     home: "Beranda",
     failedLoadNodeDetails: "Gagal memuat data telemetri dari server untuk node ini.",
-    backToDashboard: "Kembali ke Dashboard Utama",
+    backToDashboard: "Kembali ke Dashboard",
     connected: "Terhubung",
     disconnected: "Terputus",
     waterSuitability: "Kelayakan Air:",
@@ -71,7 +71,8 @@ const translations = {
     location: "Lokasi",
     coordinates: "Koordinat",
     refSystem: "Sistem Referensi",
-    mapDataSourced: "Peta bersumber dari OpenStreetMap (OSM) kontributor."
+    mapDataSourced: "Peta bersumber dari OpenStreetMap (OSM) kontributor.",
+    navigate: "Navigasi (Jalan Kaki)"
   },
   en: {
     radarActive: "Finding Nearest Node",
@@ -84,7 +85,7 @@ const translations = {
     nearestNode: "Nearest node",
     searchPlaceholder: "Search nodes by name or location...",
     failedFetch: "Failed to Fetch Telemetry Data",
-    failedLoadNodes: "Failed to load telemetry nodes from server.",
+    failedLoadNodes: "Failed to load telemetry nodes.",
     noNodesFound: "No nodes found",
     searchNoMatch: "Your search \"{search}\" did not match any devices in the database.",
     tdsTitle: "Total Dissolved Solids (TDS)",
@@ -97,7 +98,7 @@ const translations = {
     themeLight: "Light Theme",
     home: "Home",
     failedLoadNodeDetails: "Failed to load telemetry data from server for this node.",
-    backToDashboard: "Back to Main Dashboard",
+    backToDashboard: "Back to Dashboard",
     connected: "Connected",
     disconnected: "Disconnected",
     waterSuitability: "Water Suitability:",
@@ -143,7 +144,8 @@ const translations = {
     location: "Location",
     coordinates: "Coordinates",
     refSystem: "Reference System",
-    mapDataSourced: "Map data sourced from OpenStreetMap (OSM) contributors."
+    mapDataSourced: "Map data sourced from OpenStreetMap (OSM) contributors.",
+    navigate: "Navigate (Walking)"
   }
 }
 

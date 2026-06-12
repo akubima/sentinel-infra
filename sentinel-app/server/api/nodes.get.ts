@@ -33,6 +33,8 @@ export default defineEventHandler(async (event) => {
         d.id, 
         d.name, 
         d.location, 
+        d.latitude::float as latitude,
+        d.longitude::float as longitude,
         (t.metrics->'telemetry'->>'tds')::float as tds,
         (t.metrics->'telemetry'->>'temperature')::float as temperature,
         t.time as telemetry_time
@@ -40,7 +42,7 @@ export default defineEventHandler(async (event) => {
       LEFT JOIN LATERAL (
         SELECT sub.metrics, sub.time
         FROM device_telemetry sub
-        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '30 days'
+        WHERE sub.id = d.id AND sub.time >= NOW() - INTERVAL '7 days'
         ORDER BY sub.time DESC
         LIMIT 1
       ) t ON true
@@ -75,6 +77,8 @@ export default defineEventHandler(async (event) => {
         id: row.id,
         name: row.name,
         location: row.location,
+        latitude: row.latitude,
+        longitude: row.longitude,
         telemetry: {
           tds: row.tds !== null ? parseFloat(row.tds.toFixed(1)) : null,
           temperature: row.temperature !== null ? parseFloat(row.temperature.toFixed(1)) : null,

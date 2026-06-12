@@ -49,8 +49,9 @@ const {
   handleMouseLeave
 } = useTelemetryChart(history)
 
-// Load Leaflet dynamically via CDN
+// Load Leaflet dynamically via CDN & Set Dynamic Title
 useHead({
+  title: () => node.value ? `${node.value.name} - Sentinel` : 'Sentinel',
   link: [
     {
       rel: 'stylesheet',
@@ -247,22 +248,22 @@ const tempGaugePercent = computed(() => {
     <div class="flex items-center justify-between">
       <button 
         @click="router.push('/')" 
-        class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 hover:bg-muted text-sm font-semibold transition-all glass-panel"
+        class="flex items-center gap-2 px-3.5 py-1.5 rounded-md border border-border/60 hover:bg-muted text-xs font-bold uppercase tracking-wider transition-all glass-panel cursor-pointer shadow-sm active:scale-95"
       >
-        <ArrowLeft class="w-4 h-4" />
-        <span>{{ t('home') }}</span>
+        <ArrowLeft class="w-4 h-4 text-blue-500" />
+        <span>{{ t('backToDashboard') }}</span>
       </button>
     </div>
 
     <!-- Error State -->
-    <div v-if="fetchError" class="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex gap-3 items-start">
+    <div v-if="fetchError" class="p-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex gap-3 items-start">
       <AlertTriangle class="w-5 h-5 shrink-0 mt-0.5" />
       <div>
         <p class="font-bold">{{ t('failedFetch') }}</p>
         <p class="text-xs mt-1 text-rose-500/80">{{ fetchError }}</p>
         <button 
           @click="router.push('/')" 
-          class="mt-4 px-4 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 font-semibold hover:bg-rose-500/30 transition-all text-xs"
+          class="mt-4 px-4 py-1.5 rounded-md bg-rose-500/20 border border-rose-500/30 font-bold hover:bg-rose-500/30 transition-all text-xs cursor-pointer uppercase tracking-wider active:scale-95"
         >
           {{ t('backToDashboard') }}
         </button>
@@ -271,12 +272,12 @@ const tempGaugePercent = computed(() => {
 
     <!-- Loading Skeleton -->
     <div v-else-if="loading" class="flex flex-col gap-8 animate-pulse">
-      <div class="h-28 bg-muted/40 rounded-2xl border border-border/40 p-6"></div>
+      <div class="h-28 bg-muted/40 rounded-xl border border-border/40 p-6"></div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="h-80 bg-muted/40 rounded-2xl border border-border/40"></div>
-        <div class="h-80 bg-muted/40 rounded-2xl border border-border/40"></div>
+        <div class="h-80 bg-muted/40 rounded-xl border border-border/40"></div>
+        <div class="h-80 bg-muted/40 rounded-xl border border-border/40"></div>
       </div>
-      <div class="h-72 bg-muted/40 rounded-2xl border border-border/40"></div>
+      <div class="h-72 bg-muted/40 rounded-xl border border-border/40"></div>
     </div>
 
     <!-- Main Detail Content -->
@@ -285,7 +286,7 @@ const tempGaugePercent = computed(() => {
       <!-- Node Header Panel -->
       <div 
         :class="[
-          'glass-panel border rounded-2xl p-6 relative overflow-hidden',
+          'glass-panel border rounded-xl p-6 relative overflow-hidden',
           node.telemetry.status === 'online'
             ? 'border-border/60'
             : 'border-rose-500/30 bg-rose-500/[0.02]'
@@ -338,7 +339,7 @@ const tempGaugePercent = computed(() => {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         <!-- TDS Sensor Gauge Card -->
-        <div class="glass-panel border border-border/60 rounded-2xl p-6 flex flex-col gap-6 transition-colors">
+        <div class="glass-panel border border-border/60 rounded-xl p-6 flex flex-col gap-6 transition-colors">
           <div class="flex justify-between items-center border-b border-border/40 pb-3">
             <h3 class="font-bold text-sm font-sans tracking-wider text-indigo-500 flex items-center gap-2.5">
               <div class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
@@ -398,7 +399,7 @@ const tempGaugePercent = computed(() => {
         </div>
 
         <!-- Temperature Sensor Card -->
-        <div class="glass-panel border border-border/60 rounded-2xl p-6 flex flex-col gap-6 transition-colors">
+        <div class="glass-panel border border-border/60 rounded-xl p-6 flex flex-col gap-6 transition-colors">
           <div class="flex justify-between items-center border-b border-border/40 pb-3">
             <h3 class="font-bold text-sm font-sans tracking-wider text-cyan-500 flex items-center gap-2.5">
               <div class="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-500">
@@ -460,7 +461,7 @@ const tempGaugePercent = computed(() => {
       </div>
 
       <!-- Trend Chart Section (Historical Telemetry Log) -->
-      <div class="glass-panel border border-border/60 rounded-2xl p-5 flex flex-col gap-4">
+      <div class="glass-panel border border-border/60 rounded-xl p-5 flex flex-col gap-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/40 pb-3">
           <div class="flex items-center gap-2.5">
             <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400">
@@ -681,7 +682,7 @@ const tempGaugePercent = computed(() => {
           <!-- Statistics Grid -->
           <div v-if="stats" class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-2 pt-6 border-t border-border/40">
             <!-- TDS Stats Card -->
-            <div class="glass-panel border border-border/40 rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all duration-300 hover:border-indigo-500/30">
+            <div class="glass-panel border border-border/40 rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all duration-300 hover:border-indigo-500/30">
               <!-- Background accent glow -->
               <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-indigo-500/5 blur-xl pointer-events-none"></div>
               
@@ -727,7 +728,7 @@ const tempGaugePercent = computed(() => {
             </div>
 
             <!-- Temperature Stats Card -->
-            <div class="glass-panel border border-border/40 rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all duration-300 hover:border-cyan-500/30">
+            <div class="glass-panel border border-border/40 rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all duration-300 hover:border-cyan-500/30">
               <!-- Background accent glow -->
               <div class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-cyan-500/5 blur-xl pointer-events-none"></div>
               
@@ -780,7 +781,7 @@ const tempGaugePercent = computed(() => {
       </div>
 
       <!-- Geographic Location Map Card (Free Leaflet Map) -->
-      <div class="glass-panel border border-border/60 rounded-2xl p-6 flex flex-col gap-6 transition-colors">
+      <div class="glass-panel border border-border/60 rounded-xl p-6 flex flex-col gap-6 transition-colors">
         <div class="flex justify-between items-center border-b border-border/40 pb-3">
           <h3 class="font-bold text-sm font-sans tracking-wider text-blue-500 flex items-center gap-2.5">
             <div class="p-1.5 rounded-lg bg-blue-500/10 text-blue-500">
@@ -802,7 +803,7 @@ const tempGaugePercent = computed(() => {
           <div class="flex flex-col justify-between gap-4 lg:col-span-1">
             <div class="flex flex-col gap-3">
               <!-- Location (formerly Physical Address) -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-xl font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
                 <MapPin class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <div class="flex flex-col gap-1 min-w-0">
                   <span class="font-bold text-foreground">{{ t('location') }}</span>
@@ -811,16 +812,30 @@ const tempGaugePercent = computed(() => {
               </div>
 
               <!-- Coordinates -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-xl font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
                 <Navigation class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
-                <div class="flex flex-col gap-1">
+                <div class="flex flex-col gap-1 w-full">
                   <span class="font-bold text-foreground">{{ t('coordinates') }}</span>
                   <span class="font-mono text-foreground font-semibold">{{ node.latitude.toFixed(6) }}&deg;, {{ node.longitude.toFixed(6) }}&deg;</span>
+                  <div class="h-px bg-border/40 my-1"></div>
+                  <a 
+                    :href="`https://www.google.com/maps/dir/?api=1&destination=${node.latitude},${node.longitude}&travelmode=walking`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors uppercase tracking-wider group focus:outline-none"
+                  >
+                    <span>{{ t('navigate') }}</span>
+                    <svg class="w-3 h-3 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
                 </div>
               </div>
               
               <!-- Reference System -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-xl font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
                 <Compass class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <div class="flex flex-col gap-1">
                   <span class="font-bold text-foreground">{{ t('refSystem') }}</span>

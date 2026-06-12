@@ -52,7 +52,7 @@ export function useGeolocation(
             }
 
             if (nearestNode) {
-              locationStatus.value = t('nearestNodeFound', { name: nearestNode.name })
+              locationStatus.value = t('nearestNodeFound', { name: `${nearestNode.name} - ${nearestNode.location}` })
               setTimeout(() => {
                 router.push(`/node/${nearestNode.id}`)
               }, 1000)
