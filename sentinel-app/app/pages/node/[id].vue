@@ -497,7 +497,7 @@ const tempGaugePercent = computed(() => {
               ]"
             >
               <span :class="['w-2.5 h-2.5 rounded transition-all duration-200', showTempSeries ? 'bg-cyan-500' : 'bg-muted-foreground/40']"></span>
-              <span>Suhu (&deg;C)</span>
+              <span>{{ t('tempLabel') }} (&deg;C)</span>
             </button>
           </div>
         </div>

@@ -73,7 +73,8 @@ const translations = {
     refSystem: "Sistem Referensi",
     mapDataSourced: "Peta bersumber dari OpenStreetMap (OSM) kontributor.",
     navigate: "Navigasi",
-    filterOnlineOnly: "Node Online"
+    filterOnlineOnly: "Node Online",
+    tempLabel: "Suhu"
   },
   en: {
     radarActive: "Finding Nearest Node",
@@ -147,7 +148,8 @@ const translations = {
     refSystem: "Reference System",
     mapDataSourced: "Map data sourced from OpenStreetMap (OSM) contributors.",
     navigate: "Navigate",
-    filterOnlineOnly: "Online Nodes"
+    filterOnlineOnly: "Online Nodes",
+    tempLabel: "Temperature"
   }
 }
 

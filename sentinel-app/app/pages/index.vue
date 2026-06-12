@@ -70,7 +70,10 @@ watch(page, () => {
   fetchNodes()
 })
 
-watch(onlineOnly, () => {
+watch(onlineOnly, (newVal) => {
+  if (process.client) {
+    localStorage.setItem('onlineOnly', String(newVal))
+  }
   page.value = 1
   fetchNodes()
 })
@@ -82,7 +85,15 @@ watchDebounced(search, () => {
 
 // Setup and auto-refresh intervals
 onMounted(() => {
-  fetchNodes()
+  const saved = localStorage.getItem('onlineOnly')
+  if (saved !== null) {
+    onlineOnly.value = saved === 'true'
+  }
+  
+  // Only trigger initial fetch here if it didn't trigger via the watcher (which only fires if onlineOnly changes from false to true)
+  if (!onlineOnly.value) {
+    fetchNodes()
+  }
   
   // Refresh data silently every 10 seconds
   refreshInterval = setInterval(() => {
