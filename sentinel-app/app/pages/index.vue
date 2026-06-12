@@ -32,6 +32,7 @@ const limit = ref(6)
 const search = ref('')
 const loading = ref(true)
 const fetchError = ref('')
+const hasFetched = ref(false)
 let refreshInterval: any = null
 
 // Calculate total pages
@@ -52,6 +53,7 @@ const fetchNodes = async (silent = false) => {
     if (data && typeof data === 'object' && 'nodes' in data) {
       nodes.value = (data as any).nodes
       totalNodes.value = (data as any).total
+      hasFetched.value = true
     }
   } catch (err: any) {
     console.error('Error fetching nodes:', err)
@@ -184,7 +186,7 @@ const formatDashboardDate = (dateString: string | null) => {
       </div>
     </div>
 
-    <div v-else-if="nodes.length === 0" class="flex flex-col items-center justify-center py-16 px-4 border border-dashed border-border/60 rounded-xl bg-muted/5">
+    <div v-else-if="hasFetched && nodes.length === 0" class="flex flex-col items-center justify-center py-16 px-4 border border-dashed border-border/60 rounded-xl bg-muted/5">
       <Activity class="w-12 h-12 text-muted-foreground/40 mb-4 animate-pulse" />
       <p class="text-base font-bold text-foreground">{{ t('noNodesFound') }}</p>
       <p class="text-xs text-muted-foreground mt-1 max-w-xs text-center font-sans">
