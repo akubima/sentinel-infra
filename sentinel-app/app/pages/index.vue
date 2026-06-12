@@ -33,6 +33,7 @@ const search = ref('')
 const loading = ref(true)
 const fetchError = ref('')
 const hasFetched = ref(false)
+const onlineOnly = ref(false)
 let refreshInterval: any = null
 
 // Calculate total pages
@@ -47,7 +48,8 @@ const fetchNodes = async (silent = false) => {
       query: {
         search: search.value,
         page: page.value,
-        limit: limit.value
+        limit: limit.value,
+        status: onlineOnly.value ? 'online' : ''
       }
     })
     if (data && typeof data === 'object' && 'nodes' in data) {
@@ -65,6 +67,11 @@ const fetchNodes = async (silent = false) => {
 
 // Watchers for reactive search and pagination
 watch(page, () => {
+  fetchNodes()
+})
+
+watch(onlineOnly, () => {
+  page.value = 1
   fetchNodes()
 })
 
@@ -150,15 +157,30 @@ const formatDashboardDate = (dateString: string | null) => {
       <!-- Cybernetic Connector Line -->
       <div class="h-px w-full bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
 
-      <!-- Integrated Command Center Search Command Input -->
-      <div class="relative w-full flex items-center">
-        <input 
-          v-model="search"
-          type="text" 
-          :placeholder="t('searchPlaceholder')" 
-          class="w-full pl-11 pr-4 py-3 rounded-md border border-border/50 bg-background/50 focus:bg-background focus:ring-1 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground/60 font-sans"
-        />
-        <Search class="absolute left-3.5 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+      <!-- Integrated Command Center Search Command Input + Online Filter -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+        <div class="relative flex-grow flex items-center">
+          <input 
+            v-model="search"
+            type="text" 
+            :placeholder="t('searchPlaceholder')" 
+            class="w-full pl-11 pr-4 py-3 rounded-md border border-border/50 bg-background/50 focus:bg-background focus:ring-1 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground/60 font-sans"
+          />
+          <Search class="absolute left-3.5 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+        </div>
+        
+        <button 
+          @click="onlineOnly = !onlineOnly"
+          :class="[
+            'px-4 py-2.5 rounded-md border text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer h-[46px] min-w-[140px] sm:w-auto focus:outline-none',
+            onlineOnly 
+              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.1)]' 
+              : 'border-border/60 bg-background/50 text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+          ]"
+        >
+          <span :class="['w-2 h-2 rounded-full transition-all duration-300', onlineOnly ? 'bg-emerald-500 pulse-glow-dot' : 'bg-muted-foreground/45']"></span>
+          <span>{{ t('filterOnlineOnly') }}</span>
+        </button>
       </div>
     </div>
     <!-- Error state -->
