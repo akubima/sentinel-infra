@@ -30,6 +30,8 @@ export default defineEventHandler(async (event) => {
         d.longitude::float as longitude, 
         (t.metrics->'telemetry'->>'tds')::float as tds,
         (t.metrics->'telemetry'->>'temperature')::float as temperature,
+        (t.metrics->'sensor_status'->>'TDS')::boolean as tds_connected,
+        (t.metrics->'sensor_status'->>'DS18B20')::boolean as temp_connected,
         t.time as telemetry_time
       FROM devices d
       LEFT JOIN LATERAL (
@@ -52,7 +54,7 @@ export default defineEventHandler(async (event) => {
     
     const row = nodeResult.rows[0];
     const telemetryTime = row.telemetry_time ? new Date(row.telemetry_time) : null;
-    const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 300000); // 5 minutes threshold
+    const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 30000); // 30 seconds threshold
     
     const nodeData = {
       id: row.id,
@@ -64,7 +66,11 @@ export default defineEventHandler(async (event) => {
         tds: row.tds !== null ? parseFloat(row.tds.toFixed(1)) : null,
         temperature: row.temperature !== null ? parseFloat(row.temperature.toFixed(1)) : null,
         time: telemetryTime,
-        status: isOnline ? 'online' : 'offline'
+        status: isOnline ? 'online' : 'offline',
+        sensorStatus: {
+          tds: row.tds_connected,
+          temp: row.temp_connected
+        }
       }
     };
     

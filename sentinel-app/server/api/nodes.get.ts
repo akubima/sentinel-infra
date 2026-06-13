@@ -92,8 +92,8 @@ export default defineEventHandler(async (event) => {
     
     const nodes = result.rows.map(row => {
       const telemetryTime = row.telemetry_time ? new Date(row.telemetry_time) : null;
-      // Define active status: within the last 5 minutes (300000ms)
-      const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 300000);
+      // Define active status: within the last 30 seconds (30000ms)
+      const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 30000);
       
       return {
         id: row.id,
