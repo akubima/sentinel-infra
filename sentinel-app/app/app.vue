@@ -74,9 +74,19 @@ useHead({
 </script>
 
 <template>
-  <div class="min-h-screen w-full relative futuristic-grid bg-background transition-colors duration-300 flex flex-col font-sans selection:bg-primary/30">
+  <div class="min-h-screen w-full relative futuristic-grid bg-background transition-colors duration-300 flex flex-col font-sans selection:bg-primary/30 overflow-x-hidden">
     <!-- Sci-fi background glow effects -->
     <div class="absolute inset-0 radial-glow pointer-events-none z-0"></div>
+
+    <!-- Liquid Glass slowly morphing colorful blobs -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <!-- Blue blob top left -->
+      <div class="absolute -top-[15%] -left-[15%] w-[60vw] h-[60vw] sm:w-[45vw] sm:h-[45vw] rounded-full bg-gradient-to-tr from-blue-500/15 to-indigo-500/5 blur-[120px] animate-blob"></div>
+      <!-- Cyan blob bottom right -->
+      <div class="absolute -bottom-[20%] -right-[15%] w-[70vw] h-[70vw] sm:w-[50vw] sm:h-[50vw] rounded-full bg-gradient-to-br from-cyan-500/15 to-blue-500/5 blur-[130px] animate-blob animation-delay-2000"></div>
+      <!-- Indigo/Violet center blob -->
+      <div class="absolute top-[30%] left-[20%] w-[50vw] h-[50vw] sm:w-[35vw] sm:h-[35vw] rounded-full bg-gradient-to-tr from-indigo-500/10 to-purple-500/5 blur-[110px] animate-blob animation-delay-4000"></div>
+    </div>
 
     <!-- Full-page route loader overlay -->
     <Transition name="fade-overlay">

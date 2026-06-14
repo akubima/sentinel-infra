@@ -256,14 +256,14 @@ const tempGaugePercent = computed(() => {
     </div>
 
     <!-- Error State -->
-    <div v-if="fetchError" class="p-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex gap-3 items-start">
+    <div v-if="fetchError" class="p-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm flex gap-3 items-start backdrop-blur-md">
       <AlertTriangle class="w-5 h-5 shrink-0 mt-0.5" />
       <div>
         <p class="font-bold">{{ t('failedFetch') }}</p>
         <p class="text-xs mt-1 text-rose-500/80">{{ fetchError }}</p>
         <button 
           @click="router.push('/')" 
-          class="mt-4 px-4 py-1.5 rounded-md bg-rose-500/20 border border-rose-500/30 font-bold hover:bg-rose-500/30 transition-all text-xs cursor-pointer uppercase tracking-wider active:scale-95"
+          class="mt-4 px-4 py-1.5 rounded-md bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500/25 backdrop-blur-md font-bold transition-all text-xs cursor-pointer uppercase tracking-wider active:scale-95 shadow-sm"
         >
           {{ t('backToDashboard') }}
         </button>
@@ -803,7 +803,7 @@ const tempGaugePercent = computed(() => {
           <div class="flex flex-col justify-between gap-4 lg:col-span-1">
             <div class="flex flex-col gap-3">
               <!-- Location (formerly Physical Address) -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-background/25 dark:bg-background/10 border border-border/25 p-3.5 rounded-lg font-sans text-xs text-muted-foreground backdrop-blur-sm shadow-sm">
                 <MapPin class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <div class="flex flex-col gap-1 min-w-0">
                   <span class="font-bold text-foreground">{{ t('location') }}</span>
@@ -812,7 +812,7 @@ const tempGaugePercent = computed(() => {
               </div>
 
               <!-- Coordinates -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-background/25 dark:bg-background/10 border border-border/25 p-3.5 rounded-lg font-sans text-xs text-muted-foreground backdrop-blur-sm shadow-sm">
                 <Navigation class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <div class="flex flex-col gap-1 w-full">
                   <span class="font-bold text-foreground">{{ t('coordinates') }}</span>
@@ -835,7 +835,7 @@ const tempGaugePercent = computed(() => {
               </div>
               
               <!-- Reference System -->
-              <div class="flex items-start gap-2 bg-muted/30 dark:bg-muted/10 border border-border/40 p-3.5 rounded-lg font-sans text-xs text-muted-foreground">
+              <div class="flex items-start gap-2 bg-background/25 dark:bg-background/10 border border-border/25 p-3.5 rounded-lg font-sans text-xs text-muted-foreground backdrop-blur-sm shadow-sm">
                 <Compass class="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <div class="flex flex-col gap-1">
                   <span class="font-bold text-foreground">{{ t('refSystem') }}</span>

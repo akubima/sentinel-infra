@@ -157,9 +157,9 @@ const formatDashboardDate = (dateString: string | null) => {
         <div class="shrink-0 w-full sm:w-auto">
           <button 
             @click="detectAndRedirectNearestNode"
-            class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-blue-500/30 hover:border-blue-500 bg-blue-500/5 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all duration-300 active:scale-95 tracking-wider uppercase group cursor-pointer"
+            class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-blue-500/25 hover:border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 backdrop-blur-md text-blue-600 dark:text-blue-400 font-bold text-xs transition-all duration-300 active:scale-95 tracking-wider uppercase group cursor-pointer shadow-sm"
           >
-            <Compass class="w-4 h-4 transition-transform duration-500 group-hover:rotate-[360deg]" />
+            <Compass class="w-4 h-4 transition-transform duration-500 group-hover:rotate-[360deg] text-blue-500 dark:text-blue-400" />
             <span>{{ t('nearestNode') }}</span>
           </button>
         </div>
@@ -175,7 +175,7 @@ const formatDashboardDate = (dateString: string | null) => {
             v-model="search"
             type="text" 
             :placeholder="t('searchPlaceholder')" 
-            class="w-full pl-11 pr-4 py-3 rounded-md border border-border/50 bg-background/50 focus:bg-background focus:ring-1 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground/60 font-sans"
+            class="w-full pl-11 pr-4 py-3 rounded-md border border-border/40 bg-background/30 backdrop-blur-md focus:bg-background/60 focus:ring-1 focus:ring-primary/50 focus:border-primary/50 text-sm transition-all placeholder:text-muted-foreground/60 font-sans shadow-sm"
           />
           <Search class="absolute left-3.5 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
         </div>
@@ -183,10 +183,10 @@ const formatDashboardDate = (dateString: string | null) => {
         <button 
           @click="onlineOnly = !onlineOnly"
           :class="[
-            'px-4 py-2.5 rounded-md border text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer h-[46px] min-w-[140px] sm:w-auto focus:outline-none',
+            'px-4 py-2.5 rounded-md border text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer h-[46px] min-w-[140px] sm:w-auto focus:outline-none shadow-sm',
             onlineOnly 
-              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.1)]' 
-              : 'border-border/60 bg-background/50 text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-[0_4px_16px_rgba(16,185,129,0.1)] backdrop-blur-md' 
+              : 'border-border/40 bg-background/30 backdrop-blur-md text-muted-foreground hover:bg-background/60 hover:text-foreground'
           ]"
         >
           <span :class="['w-2 h-2 rounded-full transition-all duration-300', onlineOnly ? 'bg-emerald-500 pulse-glow-dot' : 'bg-muted-foreground/45']"></span>
