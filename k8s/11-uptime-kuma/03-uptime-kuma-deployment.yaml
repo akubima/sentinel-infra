@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-kuma
+  namespace: sentinel-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: uptime-kuma
+  template:
+    metadata:
+      labels:
+        app: uptime-kuma
+    spec:
+      containers:
+        - name: uptime-kuma
+          image: louislam/uptime-kuma:2.4.0
+          ports:
+            - containerPort: 3002
+          env:
+            - name: PORT
+              value: "3002"
+          volumeMounts:
+            - name: uptime-kuma-data-storage
+              mountPath: /app/data
+      volumes:
+        - name: uptime-kuma-data-storage
+          persistentVolumeClaim:
+            claimName: uptime-kuma-pvc
