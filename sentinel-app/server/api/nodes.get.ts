@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
     }
     
     if (status === 'online') {
-      whereClauses.push(`t.time >= NOW() - INTERVAL '5 minutes'`);
+      whereClauses.push(`t.time >= NOW() - INTERVAL '30 seconds'`);
     }
     
     if (whereClauses.length > 0) {
