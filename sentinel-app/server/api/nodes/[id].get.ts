@@ -20,7 +20,6 @@ export default defineEventHandler(async (event) => {
   }
   
   try {
-    // 1. Fetch node metadata and latest telemetry via parameterized query
     const nodeQuery = `
       SELECT 
         d.id, 
@@ -32,7 +31,8 @@ export default defineEventHandler(async (event) => {
         (t.metrics->'telemetry'->>'temperature')::float as temperature,
         (t.metrics->'sensor_status'->>'TDS')::boolean as tds_connected,
         (t.metrics->'sensor_status'->>'DS18B20')::boolean as temp_connected,
-        t.time as telemetry_time
+        t.time as telemetry_time,
+        (t.time >= NOW() - INTERVAL '30 seconds') as is_online
       FROM devices d
       LEFT JOIN LATERAL (
         SELECT sub.metrics, sub.time
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     
     const row = nodeResult.rows[0];
     const telemetryTime = row.telemetry_time ? new Date(row.telemetry_time) : null;
-    const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 30000); // 30 seconds threshold
+    const isOnline = row.is_online === true;
     
     const nodeData = {
       id: row.id,
