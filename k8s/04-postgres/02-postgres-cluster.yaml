@@ -6,7 +6,7 @@ metadata:
   annotations:
     secret.reloader.stakater.com/reload: "postgres-secret"
 spec:
-  instances: 1
+  instances: 3
   managed:
     roles:
       - name: grafana-rw
@@ -163,9 +163,8 @@ spec:
           name: postgres-backup-s3-creds
           key: AWS_SECRET_ACCESS_KEY
       wal:
-        retention: "7d"
         compression: gzip
       data:
         compression: gzip
         immediateCheckpoint: true
-      retentionPolicy: "30d"
+    retentionPolicy: "30d"
