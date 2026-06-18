@@ -39,7 +39,8 @@ export default defineEventHandler(async (event) => {
         d.longitude::float as longitude,
         (t.metrics->'telemetry'->>'tds')::float as tds,
         (t.metrics->'telemetry'->>'temperature')::float as temperature,
-        t.time as telemetry_time
+        t.time as telemetry_time,
+        (t.time >= NOW() - INTERVAL '30 seconds') as is_online
       FROM devices d
       LEFT JOIN LATERAL (
         SELECT sub.metrics, sub.time
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event) => {
     }
     
     if (status === 'online') {
-      whereClauses.push(`t.time >= NOW() - INTERVAL '5 minutes'`);
+      whereClauses.push(`t.time >= NOW() - INTERVAL '30 seconds'`);
     }
     
     if (whereClauses.length > 0) {
@@ -92,8 +93,7 @@ export default defineEventHandler(async (event) => {
     
     const nodes = result.rows.map(row => {
       const telemetryTime = row.telemetry_time ? new Date(row.telemetry_time) : null;
-      // Define active status: within the last 30 seconds (30000ms)
-      const isOnline = telemetryTime && (new Date().getTime() - telemetryTime.getTime() < 30000);
+      const isOnline = row.is_online === true;
       
       return {
         id: row.id,

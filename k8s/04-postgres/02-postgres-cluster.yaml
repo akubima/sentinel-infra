@@ -6,7 +6,7 @@ metadata:
   annotations:
     secret.reloader.stakater.com/reload: "postgres-secret"
 spec:
-  instances: 1
+  instances: 3
   managed:
     roles:
       - name: grafana-rw
@@ -152,3 +152,19 @@ spec:
     resizeInUseVolumes: true
     size: 5Gi
     storageClass: longhorn-retained
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://sentinel-backup-905418361269-us-west-2-an/postgres-backup"
+      s3Credentials:
+        accessKeyId:
+          name: postgres-backup-s3-creds
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: postgres-backup-s3-creds
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+        immediateCheckpoint: true
+    retentionPolicy: "30d"

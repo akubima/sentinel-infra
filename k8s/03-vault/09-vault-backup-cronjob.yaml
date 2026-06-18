@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-backup-sa
+  namespace: vault
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-backup-role
+  namespace: vault
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-backup-rb
+  namespace: vault
+subjects:
+  - kind: ServiceAccount
+    name: vault-backup-sa
+    namespace: vault
+roleRef:
+  kind: Role
+  name: vault-backup-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-backup-script
+  namespace: vault
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -e
+    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    BACKUP_DIR=/tmp/vault-backup
+    S3_PREFIX="${S3_PREFIX:-vault-backup}"
+    mkdir -p "$BACKUP_DIR"
+    echo "=========================================="
+    echo "Vault backup started: $TIMESTAMP"
+    echo "=========================================="
+    echo "[1/4] Reading vault-secret..."
+    ROOT_TOKEN=$(kubectl get secret vault-secret -n vault \
+      -o jsonpath='{.data.root-token}' | base64 -d)
+    UNSEAL_KEYS_RAW=$(kubectl get secret vault-secret -n vault \
+      -o jsonpath='{.data.unseal-keys}' | base64 -d)
+    if [ -z "$ROOT_TOKEN" ] || [ -z "$UNSEAL_KEYS_RAW" ]; then
+      echo "ERROR: vault-secret is empty or not found. Backup aborted."
+      exit 1
+    fi
+    echo "vault-secret read successfully."
+    echo "[2/4] Generating unseal keys file..."
+    KEY1=$(echo "$UNSEAL_KEYS_RAW" | cut -d',' -f1)
+    KEY2=$(echo "$UNSEAL_KEYS_RAW" | cut -d',' -f2)
+    KEY3=$(echo "$UNSEAL_KEYS_RAW" | cut -d',' -f3)
+    KEY4=$(echo "$UNSEAL_KEYS_RAW" | cut -d',' -f4)
+    KEY5=$(echo "$UNSEAL_KEYS_RAW" | cut -d',' -f5)
+    KEYS_FILE="$BACKUP_DIR/vault-keys-${TIMESTAMP}.txt"
+    printf "=== Vault Backup: %s ===\n\n"                    "$TIMESTAMP"  > "$KEYS_FILE"
+    printf "Unseal Key 1: %s\n"                               "$KEY1"      >> "$KEYS_FILE"
+    printf "Unseal Key 2: %s\n"                               "$KEY2"      >> "$KEYS_FILE"
+    printf "Unseal Key 3: %s\n"                               "$KEY3"      >> "$KEYS_FILE"
+    printf "Unseal Key 4: %s\n"                               "$KEY4"      >> "$KEYS_FILE"
+    printf "Unseal Key 5: %s\n"                               "$KEY5"      >> "$KEYS_FILE"
+    printf "\nRoot Token: %s\n"                               "$ROOT_TOKEN" >> "$KEYS_FILE"
+    printf "\nUnseal threshold: 3 of 5 keys.\n"                            >> "$KEYS_FILE"
+    printf "WARNING: This file contains highly sensitive keys.\n"          >> "$KEYS_FILE"
+    echo "Unseal keys file is ready."
+    echo "[3/4] Capturing Raft snapshot from vault-0..."
+    SNAP_FILE="$BACKUP_DIR/vault-snapshot-${TIMESTAMP}.snap"
+    kubectl exec -n vault vault-0 -- \
+      sh -c 'env VAULT_TOKEN="'"$ROOT_TOKEN"'" VAULT_SKIP_VERIFY=true vault operator raft snapshot save /tmp/vault.snap && cat /tmp/vault.snap && rm -f /tmp/vault.snap' > "$SNAP_FILE"
+    if [ ! -s "$SNAP_FILE" ]; then
+      echo "ERROR: Raft snapshot is empty or failed to capture."
+      exit 1
+    fi
+    SNAP_SIZE=$(du -sh "$SNAP_FILE" | cut -f1)
+    echo "Snapshot captured successfully: $SNAP_SIZE"
+    echo "[4/4] Uploading to S3..."
+    S3_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${TIMESTAMP}"
+    aws s3 cp "$KEYS_FILE"  "${S3_PATH}/vault-keys-${TIMESTAMP}.txt"
+    echo "Unseal keys file uploaded."
+    aws s3 cp "$SNAP_FILE"  "${S3_PATH}/vault-snapshot-${TIMESTAMP}.snap"
+    echo "Snapshot uploaded."
+    rm -rf "$BACKUP_DIR"
+    echo "Local temporary files cleaned up."
+    echo "=========================================="
+    echo "Backup completed successfully: $S3_PATH"
+    echo "=========================================="
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-backup
+  namespace: vault
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-backup-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: vault-backup
+              image: alpine/k8s:1.34.3
+              command: ["/bin/sh", "/scripts/backup.sh"]
+              envFrom:
+                - secretRef:
+                    name: vault-backup-s3-creds
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 300m
+                  memory: 256Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: scripts
+              configMap:
+                name: vault-backup-script
+                defaultMode: 0755
