@@ -102,6 +102,7 @@ Host nodes must be standardized on Ubuntu or Debian Linux with `kubeadm`. All ha
 *   **Secrets Sync:** External Secrets Operator
 *   **Certificates:** cert-manager
 *   **Database Operator:** CloudNativePG
+*   **Automated Config Reload:** Stakater Reloader (automatic pod updates and secret rotation)
 *   **Metrics:** Metrics Server
 *   **Engine:** Docker (or compatible daemon) on the image builder host
 
@@ -274,7 +275,13 @@ curl -sSfL https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/instal
   | sudo sh -s -- -b /usr/local/bin
 ```
 
-### 10. Metrics Server (Telemetry Monitoring)
+### 10. Automated Config & Secret Hot-Reloading (Stakater Reloader)
+To enable zero-downtime pod rollouts immediately when Vault secrets rotate:
+```bash
+kubectl apply -f https://raw.githubusercontent.com/stakater/Reloader/master/deployments/kubernetes/reloader.yaml
+```
+
+### 11. Metrics Server (Telemetry Monitoring)
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
@@ -475,6 +482,13 @@ To ensure record keys remain lexicographically sortable while retaining high-pre
 *   **Unix Millisecond Timestamp** (first 10 base32 characters, using high-performance bitwise extraction)
 *   **Cryptographically Random Bytes** (remaining 16 characters generated via `gen_random_bytes(11)`)
 
+### 5. Access Management & Database Roles
+The DB cluster manages granular authorization scopes under CNPG:
+*   `sentinel`: Administrative cluster operations role (linked directly to the main `postgres-secret`).
+*   `bridge-rw`: Ingestion bridge client credentials. Permitted write privileges on tables and execution of the ULID algorithm.
+*   `grafana-rw`: Dashboard administrative state write access (managing database `grafana`).
+*   `grafana-ro`: Visualization analytical panels read-only access (limited to telemetry database reads).
+
 ---
 
 ## Fail-Safe: Backup, Recovery & Anomaly Resolution
@@ -573,3 +587,8 @@ kubectl delete pod -n sentinel-infra -l app=<app-name>
 ## Telemetry Integrity & Payload Protection
 
 Plaintext credentials, private keys, AWS certificates, and API tokens are never checked into git. Under no circumstances should secrets bypass Vault. External Secrets Operator acts as the firewall, converting references to local secrets dynamically at launch. Any PR violating this credential containment protocol will be rejected immediately.
+
+### Automated Secrets Rotation Routing
+For high operational reliability, we avoid manual rolling triggers on configuration updates:
+*   **Application Services:** All frontend and storage registry deployments (e.g. `sentinel-app`, `registry`) incorporate Stakater Reloader annotations (`secret.reloader.stakater.com/reload: "registry-auth-secret"`). When the External Secrets Operator pulls rotated keys from Vault and writes them to local namespace secrets, Reloader automatically triggers a zero-downtime rolling update.
+*   **Database Credentials:** CloudNativePG configuration secrets are tagged with the `cnpg.io/reload: "true"` label. Whenever rotated credentials write to Postgres secrets, the CNPG operator intercepts the event and hot-reloads authentication states dynamically without terminating active Postgres cluster instances.
