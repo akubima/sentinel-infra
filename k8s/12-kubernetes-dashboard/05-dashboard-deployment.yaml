@@ -29,6 +29,7 @@ spec:
           args:
             - --auto-generate-certificates
             - --namespace=kube-system
+            - --enable-skip-login
           volumeMounts:
             - name: kubernetes-dashboard-certs
               mountPath: /certs
