@@ -4,7 +4,7 @@ metadata:
   name: hdfs-ui-proxy-config
   namespace: sentinel-infra
 data:
-  nginx.conf: |
+  nginx.conf.template: |
     worker_processes auto;
     events {
         worker_connections 1024;
@@ -15,14 +15,13 @@ data:
         sendfile        on;
         keepalive_timeout  65;
 
-        # Use Kubernetes DNS for resolving DataNode hostnames internally
-        resolver kube-dns.kube-system.svc.cluster.local valid=10s ipv6=off;
+        # The dynamically injected DNS IP will go here
+        resolver KUBE_DNS_IP valid=10s ipv6=off;
 
         server {
             listen 80;
             server_name _;
 
-            # Allow downloading large files
             client_max_body_size 0;
             proxy_buffering off;
 
@@ -32,17 +31,12 @@ data:
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 
-                # Intercept 307 Temporary Redirect from NameNode
                 proxy_intercept_errors on;
                 error_page 307 = @handle_redirect;
             }
 
             location @handle_redirect {
-                # Extract the DataNode URL from the Location header
-                set $saved_redirect_location '$upstream_http_location';
-                
-                # Proxy the request directly to the DataNode internally, 
-                # streaming the data directly back to the user without redirecting the browser.
+                set $saved_redirect_location $upstream_http_location;
                 proxy_pass $saved_redirect_location;
             }
         }
@@ -68,12 +62,19 @@ spec:
           image: nginx:alpine
           ports:
             - containerPort: 80
+          command:
+            - /bin/sh
+            - -c
+            - |
+              KUBE_DNS=$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf)
+              sed "s/KUBE_DNS_IP/$KUBE_DNS/g" /tmp/nginx.conf.template > /etc/nginx/nginx.conf
+              nginx -g 'daemon off;'
           volumeMounts:
-            - name: nginx-config
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
+            - name: config-template
+              mountPath: /tmp/nginx.conf.template
+              subPath: nginx.conf.template
       volumes:
-        - name: nginx-config
+        - name: config-template
           configMap:
             name: hdfs-ui-proxy-config
 ---
