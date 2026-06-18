@@ -46,9 +46,7 @@ spec:
               memory: 1Gi
           command: ["/bin/sh", "-c"]
           args:
-            - |
-              echo "{\"api_addr\": \"https://${POD_NAME}.vault-internal-service.vault.svc.cluster.local:8200\", \"cluster_addr\": \"https://${POD_NAME}.vault-internal-service.vault.svc.cluster.local:8201\"}" > /tmp/local-config.json
-              vault server -config=/vault/config/vault.json -config=/tmp/local-config.json
+            - "vault server -config=/vault/config/vault.json"
           env:
             - name: VAULT_ADDR
               value: "https://127.0.0.1:8200"
