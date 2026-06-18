@@ -22,9 +22,9 @@ export default defineEventHandler((event) => {
   // Only apply rate limiting to /api/ routes
   if (!event.path.startsWith('/api/')) return
 
-  // Extract client IP address safely
-  const forwardedFor = getRequestHeader(event, 'x-forwarded-for')
-  const ip = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : null) || 
+  // Extract client IP address safely (Cloudflare trusted header over X-Forwarded-For)
+  const cfConnectingIp = getRequestHeader(event, 'cf-connecting-ip')
+  const ip = cfConnectingIp || 
              event.node.req.socket.remoteAddress || 
              '127.0.0.1'
 

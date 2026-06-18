@@ -1,7 +1,7 @@
 import os
 import sys
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_date
+from pyspark.sql.functions import to_date, from_utc_timestamp, date_format
 
 def main():
     # Retrieve Database credentials from environment variables
@@ -52,8 +52,11 @@ def main():
         hdfs_path = "hdfs://hadoop-service:9000/user/sentinel/telemetry"
         print(f"Writing data to HDFS at: {hdfs_path}")
         
+        # Convert UTC to Jakarta Time (WIB) before extracting partition keys
         df_partitioned = df \
-            .withColumn("partition_date", to_date("time")) \
+            .withColumn("jakarta_time", from_utc_timestamp("time", "Asia/Jakarta")) \
+            .withColumn("partition_date", to_date("jakarta_time")) \
+            .drop("jakarta_time") \
             .sortWithinPartitions("id")
         
         df_partitioned.write \

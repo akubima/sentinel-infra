@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hdfs-ui-proxy-config
+  namespace: sentinel-infra
+data:
+  nginx.conf.template: |
+    worker_processes auto;
+    events {
+        worker_connections 1024;
+    }
+    http {
+        include       mime.types;
+        default_type  application/octet-stream;
+        sendfile        on;
+        keepalive_timeout  65;
+
+        # The dynamically injected DNS IP will go here
+        resolver KUBE_DNS_IP valid=10s ipv6=off;
+
+        server {
+            listen 80;
+            server_name _;
+
+            client_max_body_size 0;
+            proxy_buffering off;
+
+            location / {
+                proxy_pass http://hadoop-service:9870;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                
+                proxy_intercept_errors on;
+                error_page 307 = @handle_redirect;
+            }
+
+            location @handle_redirect {
+                set $saved_redirect_location $upstream_http_location;
+                proxy_pass $saved_redirect_location;
+            }
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hdfs-ui-proxy
+  namespace: sentinel-infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hdfs-ui-proxy
+  template:
+    metadata:
+      labels:
+        app: hdfs-ui-proxy
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          command:
+            - /bin/sh
+            - -c
+            - |
+              KUBE_DNS=$(awk '/nameserver/ {print $2; exit}' /etc/resolv.conf)
+              sed "s/KUBE_DNS_IP/$KUBE_DNS/g" /tmp/nginx.conf.template > /etc/nginx/nginx.conf
+              nginx -g 'daemon off;'
+          volumeMounts:
+            - name: config-template
+              mountPath: /tmp/nginx.conf.template
+              subPath: nginx.conf.template
+      volumes:
+        - name: config-template
+          configMap:
+            name: hdfs-ui-proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfs-ui-proxy
+  namespace: sentinel-infra
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app: hdfs-ui-proxy

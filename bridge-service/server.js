@@ -17,19 +17,27 @@ const pool = new Pool({
     database: process.env.PGDATABASE,
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.error('FATAL Uncaught Exception:', err);
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
+    console.error('FATAL Unhandled Rejection:', err);
+    process.exit(1);
 });
 
 // ==== Middleware
 const apiKeyAuth = (req, res, next) => {
-    if (req.headers['x-api-key'] !== API_KEY) {
+    const providedKey = req.headers['x-api-key'] || '';
+    
+    const expectedBuffer = crypto.createHash('sha256').update(String(API_KEY)).digest();
+    const providedBuffer = crypto.createHash('sha256').update(String(providedKey)).digest();
+
+    if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     next();
@@ -78,6 +86,11 @@ mqttClient.on('connect', () => {
 
 mqttClient.on('message', async (topic, payload) => {
     try {
+        if (payload.length > 5120) {
+            console.warn(`[Instance: ${instanceId}] Dropped payload: exceeds 5KB limit (${payload.length} bytes)`);
+            return;
+        }
+
         const data = JSON.parse(payload.toString());
         const nodeId = data.node_id;
 

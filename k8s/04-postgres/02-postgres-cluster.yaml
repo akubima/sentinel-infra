@@ -9,6 +9,11 @@ spec:
   instances: 3
   managed:
     roles:
+      - name: sentinel
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-secret
       - name: grafana-rw
         ensure: present
         login: true
