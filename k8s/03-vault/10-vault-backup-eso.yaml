@@ -1,0 +1,37 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vault-backup-eso
+  namespace: vault
+spec:
+  refreshInterval: "1m"
+  secretStoreRef:
+    name: kv
+    kind: SecretStore
+  target:
+    name: vault-backup-s3-creds
+    creationPolicy: Owner
+    template:
+      data:
+        AWS_ACCESS_KEY_ID: "{{ .AWS_ACCESS_KEY_ID }}"
+        AWS_SECRET_ACCESS_KEY: "{{ .AWS_SECRET_ACCESS_KEY }}"
+        AWS_DEFAULT_REGION: "{{ .AWS_DEFAULT_REGION }}"
+        S3_BUCKET: "{{ .S3_BUCKET }}"
+        S3_PREFIX: "vault-backup"
+  data:
+    - secretKey: AWS_ACCESS_KEY_ID
+      remoteRef:
+        key: "prod/s3backup"
+        property: AWS_ACCESS_KEY_ID
+    - secretKey: AWS_SECRET_ACCESS_KEY
+      remoteRef:
+        key: "prod/s3backup"
+        property: AWS_SECRET_ACCESS_KEY
+    - secretKey: AWS_DEFAULT_REGION
+      remoteRef:
+        key: "prod/s3backup"
+        property: AWS_DEFAULT_REGION
+    - secretKey: S3_BUCKET
+      remoteRef:
+        key: "prod/s3backup"
+        property: S3_BUCKET

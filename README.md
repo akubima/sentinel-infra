@@ -306,6 +306,7 @@ Before deploying workloads that consume secrets, make sure these Vault paths exi
 | `prod/grafana` | `smtp_user`, `smtp_password` |
 | `prod/bridge` | `api_key`, `cert`, `key`, `ca` |
 | `prod/cloudflared` | `token` |
+| `prod/s3backup` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `S3_BUCKET` |
 
 The bridge certificate values should be stored in a format that can be loaded through environment variables. The service converts escaped newlines (`\n`) back into PEM newlines at startup.
 
@@ -413,6 +414,71 @@ The CNPG cluster uses `ghcr.io/imusmanmalik/timescaledb-postgis:17-3.5` and init
 - `devices` table with a generated ULID primary key.
 - `device_telemetry` TimescaleDB hypertable for telemetry JSON payloads.
 - Application roles for Grafana read/write, Grafana read-only, and bridge read/write access.
+
+## Backup & Recovery
+
+The stack secures S3 backup credentials in Vault under the path `sentinel-kv/<env>/s3backup`. External Secrets Operator (ESO) syncs these credentials to Kubernetes secrets in both the `vault` and `sentinel-infra` namespaces. During an outage, the backup/recovery jobs use cached Kubernetes secrets to execute successfully.
+
+### 1. S3 Backup Credentials Setup
+
+Before running backups, configure S3 credentials in Vault:
+
+| Vault Path | Property | Value |
+| --- | --- | --- |
+| `sentinel-kv/prod/s3backup` | `AWS_ACCESS_KEY_ID` | `<your-aws-access-key-id>` |
+| `sentinel-kv/prod/s3backup` | `AWS_SECRET_ACCESS_KEY` | `<your-aws-secret-access-key>` |
+| `sentinel-kv/prod/s3backup` | `AWS_DEFAULT_REGION` | `ap-southeast-1` |
+| `sentinel-kv/prod/s3backup` | `S3_BUCKET` | `sentinel-backup-905418361269-us-west-2-an` |
+
+### 2. Vault Backups (Raft Snapshot)
+
+Vault backups run daily via a CronJob that takes a Raft snapshot and uploads it alongside the decrypted unseal keys and root token to S3.
+
+- **Schedule**: Daily at 02:00 AM (`0 2 * * *`).
+- **Target Folder**: `s3://sentinel-backup-905418361269-us-west-2-an/vault-backup/<timestamp>/`
+- **Trigger Manual Backup Test**:
+  ```bash
+  kubectl create job vault-backup-test --from=cronjob/vault-backup -n vault
+  kubectl logs -n vault -l job-name=vault-backup-test --follow
+  ```
+
+### 3. PostgreSQL Backups (CNPG/Barman)
+
+PostgreSQL backups are managed natively by CloudNativePG (CNPG) utilizing Barman.
+
+- **Schedule**: Daily at 02:00 AM (`0 2 * * *`).
+- **Target Folder**: `s3://sentinel-backup-905418361269-us-west-2-an/postgres-backup/`
+- **Verify Archiving Status**:
+  ```bash
+  kubectl get cluster postgres -n sentinel-infra -o jsonpath='{.status.conditions}'
+  ```
+- **Trigger Manual Backup**:
+  ```bash
+  kubectl cnpg backup postgres -n sentinel-infra
+  ```
+
+### 4. Recovery Flow
+
+#### Restore PostgreSQL
+Apply a restoration cluster configuration pointing to the S3 bucket path (e.g., `cluster-restore.yaml` referencing the backup bucket).
+
+#### Restore Vault
+1. Retrieve `vault-keys-<timestamp>.txt` and the latest snapshot `.snap` from S3.
+2. Spin up/restart the Vault cluster.
+3. Perform a Raft restore:
+   ```bash
+   vault operator raft snapshot restore /path/to/vault-snapshot-<timestamp>.snap
+   ```
+4. Manually unseal the nodes with 3 of the 5 keys retrieved from the file:
+   ```bash
+   vault operator unseal <key1>
+   vault operator unseal <key2>
+   vault operator unseal <key3>
+   ```
+5. Authenticate using the root token:
+   ```bash
+   vault login <root-token>
+   ```
 
 ## Operations
 
