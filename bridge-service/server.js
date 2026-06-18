@@ -20,11 +20,13 @@ const pool = new Pool({
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.error('FATAL Uncaught Exception:', err);
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
+    console.error('FATAL Unhandled Rejection:', err);
+    process.exit(1);
 });
 
 // ==== Middleware
