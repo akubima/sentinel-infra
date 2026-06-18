@@ -68,7 +68,9 @@ graph TD
     |-- 07-bridge-service/            # Bridge service secrets, service, deployment
     |-- 08-cloudflared/               # Cloudflare Tunnel token and deployment
     |-- 09-hadoop/                    # Simple Hadoop HDFS storage
-    `-- 10-sentinel-app/              # Sentinel Web App service and deployment
+    |-- 10-sentinel-app/              # Sentinel Web App service and deployment
+    |-- 11-uptime-kuma/               # Uptime Kuma monitoring service and deployment
+    `-- 12-kubernetes-dashboard/      # Scalable Kubernetes Dashboard in kube-system
 ```
 
 The numbered `k8s/` directories are ordered by dependency: namespaces, storage and networking, secrets, database, then applications.
@@ -339,6 +341,8 @@ kubectl apply -f k8s/07-bridge-service/
 kubectl apply -f k8s/08-cloudflared/
 kubectl apply -f k8s/09-hadoop/
 kubectl apply -f k8s/10-sentinel-app/
+kubectl apply -f k8s/11-uptime-kuma/
+kubectl apply -f k8s/12-kubernetes-dashboard/
 ```
 
 ### 3. Build and Push the Bridge Image
@@ -404,6 +408,23 @@ Restart the bridge after pushing a new image:
 ```bash
 kubectl rollout restart deployment/bridge -n sentinel-infra
 ```
+
+### 6. Accessing the Kubernetes Dashboard
+
+The Kubernetes Dashboard is deployed in the `kube-system` namespace.
+
+1. **Accessing via Port Forwarding**:
+   ```bash
+   kubectl port-forward -n kube-system service/kubernetes-dashboard 8443:443
+   ```
+   Now access the dashboard at `https://localhost:8443`.
+
+2. **Retrieve the Admin Login Token**:
+   Generate an admin token using the helper `admin-user` ServiceAccount:
+   ```bash
+   kubectl create token admin-user -n kube-system
+   ```
+   Copy and paste this token into the dashboard login screen.
 
 ## Postgres Schema
 
