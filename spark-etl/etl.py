@@ -56,13 +56,12 @@ def main():
         df_partitioned = df \
             .withColumn("jakarta_time", from_utc_timestamp("time", "Asia/Jakarta")) \
             .withColumn("partition_date", to_date("jakarta_time")) \
-            .withColumn("partition_hour", date_format("jakarta_time", "HH")) \
             .drop("jakarta_time") \
             .sortWithinPartitions("id")
         
         df_partitioned.write \
             .mode("append") \
-            .partitionBy("partition_date", "partition_hour") \
+            .partitionBy("partition_date") \
             .parquet(hdfs_path)
 
         print("Export completed successfully.")
