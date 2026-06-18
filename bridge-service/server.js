@@ -78,6 +78,11 @@ mqttClient.on('connect', () => {
 
 mqttClient.on('message', async (topic, payload) => {
     try {
+        if (payload.length > 5120) {
+            console.warn(`[Instance: ${instanceId}] Dropped payload: exceeds 5KB limit (${payload.length} bytes)`);
+            return;
+        }
+
         const data = JSON.parse(payload.toString());
         const nodeId = data.node_id;
 
