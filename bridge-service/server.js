@@ -29,7 +29,12 @@ process.on('unhandledRejection', (err) => {
 
 // ==== Middleware
 const apiKeyAuth = (req, res, next) => {
-    if (req.headers['x-api-key'] !== API_KEY) {
+    const providedKey = req.headers['x-api-key'] || '';
+    
+    const expectedBuffer = crypto.createHash('sha256').update(String(API_KEY)).digest();
+    const providedBuffer = crypto.createHash('sha256').update(String(providedKey)).digest();
+
+    if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     next();
