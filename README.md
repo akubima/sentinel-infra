@@ -467,7 +467,7 @@ Vault backups run daily via a CronJob that takes a Raft snapshot and uploads it 
 
 PostgreSQL backups are managed natively by CloudNativePG (CNPG) utilizing Barman.
 
-- **Schedule**: Daily at 02:00 AM (`0 2 * * *`).
+- **Schedule**: Daily at 02:00 AM (`0 0 2 * * *`).
 - **Target Folder**: `s3://sentinel-backup-905418361269-us-west-2-an/postgres-backup/`
 - **Verify Archiving Status**:
   ```bash
