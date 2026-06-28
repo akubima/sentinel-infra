@@ -1,7 +1,7 @@
 import os
 import sys
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import to_date, from_utc_timestamp, date_format
+from pyspark.sql.functions import avg, col, count, date_trunc, get_json_object, max, min, to_date
 
 def main():
     # Retrieve Database credentials from environment variables
@@ -17,19 +17,28 @@ def main():
     # Initialize Spark Session
     # Note: We configure it to run in local mode (single node) and use the PostgreSQL driver jar.
     spark = SparkSession.builder \
-        .appName("SentinelTelemetryExporter") \
+        .appName("SentinelDailyTelemetryAggregator") \
         .master("local[*]") \
         .config("spark.jars", "/opt/spark/jars/postgresql-42.7.2.jar") \
+        .config("spark.sql.session.timeZone", "UTC") \
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic") \
         .getOrCreate()
 
     print("Spark session initialized.")
 
     try:
-        # 1. Read the last hour of telemetry data from PostgreSQL via JDBC
+        # 1. Read the previous complete UTC day from PostgreSQL via JDBC.
         jdbc_url = f"jdbc:postgresql://{db_host}:5432/{db_name}"
-        query = "(SELECT * FROM device_telemetry WHERE time >= NOW() - INTERVAL '1 hour') as telemetry_batch"
+        query = """
+        (
+            SELECT time, id, metrics::text AS metrics
+            FROM device_telemetry
+            WHERE time >= (date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC') - INTERVAL '1 day'
+              AND time <  (date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+        ) as telemetry_daily_batch
+        """
         
-        print(f"Reading batch data from PostgreSQL database '{db_name}'...")
+        print(f"Reading previous complete UTC day from PostgreSQL database '{db_name}'...")
         df = spark.read \
             .format("jdbc") \
             .option("url", jdbc_url) \
@@ -39,32 +48,45 @@ def main():
             .option("driver", "org.postgresql.Driver") \
             .load()
 
-        count = df.count()
-        print(f"Fetched {count} records from PostgreSQL.")
+        raw_count = df.count()
+        print(f"Fetched {raw_count} raw telemetry records from PostgreSQL.")
 
-        if count == 0:
-            print("No new data to export. Exiting.")
+        if raw_count == 0:
+            print("No telemetry data for the previous UTC day. Exiting.")
             return
 
-        # 2. Write the data to HDFS in Parquet format
-        # Parquet is a compressed columnar format that is highly optimized for Hadoop queries.
-        # We partition the data by date and sort within partitions by device ID for optimal storage and query performance.
-        hdfs_path = "hdfs://hadoop-service:9000/user/sentinel/telemetry"
-        print(f"Writing data to HDFS at: {hdfs_path}")
-        
-        # Convert UTC to Jakarta Time (WIB) before extracting partition keys
-        df_partitioned = df \
-            .withColumn("jakarta_time", from_utc_timestamp("time", "Asia/Jakarta")) \
-            .withColumn("partition_date", to_date("jakarta_time")) \
-            .drop("jakarta_time") \
+        # 2. Aggregate per device per UTC day. Regulatory reporting must remain in UTC.
+        daily_summary = df \
+            .withColumn("day_utc", to_date(date_trunc("day", col("time")))) \
+            .withColumn("tds", get_json_object(col("metrics"), "$.telemetry.tds").cast("double")) \
+            .withColumn("temperature", get_json_object(col("metrics"), "$.telemetry.temperature").cast("double")) \
+            .groupBy("day_utc", "id") \
+            .agg(
+                count("*").alias("sample_count"),
+                avg("tds").alias("tds_avg"),
+                min("tds").alias("tds_min"),
+                max("tds").alias("tds_max"),
+                avg("temperature").alias("temperature_avg"),
+                min("temperature").alias("temperature_min"),
+                max("temperature").alias("temperature_max"),
+                min("time").alias("first_sample_at_utc"),
+                max("time").alias("last_sample_at_utc")
+            ) \
             .sortWithinPartitions("id")
+
+        summary_count = daily_summary.count()
+        print(f"Aggregated {summary_count} daily device summary rows.")
+
+        # 3. Write daily summaries to HDFS in Parquet format, partitioned by UTC date.
+        hdfs_path = os.getenv("DAILY_HDFS_PATH", "hdfs://hadoop-service:9000/user/sentinel/telemetry_daily")
+        print(f"Writing daily UTC summaries to HDFS at: {hdfs_path}")
         
-        df_partitioned.write \
-            .mode("append") \
-            .partitionBy("partition_date") \
+        daily_summary.write \
+            .mode("overwrite") \
+            .partitionBy("day_utc") \
             .parquet(hdfs_path)
 
-        print("Export completed successfully.")
+        print("Daily UTC summary export completed successfully.")
 
     except Exception as e:
         print(f"ETL Job failed: {str(e)}")
