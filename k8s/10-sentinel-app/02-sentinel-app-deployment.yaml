@@ -37,7 +37,7 @@ spec:
             - name: HOST
               value: "0.0.0.0"
             - name: PGHOST
-              value: "postgres-ro.sentinel-infra.svc.cluster.local"
+              value: "postgres-r.sentinel-infra.svc.cluster.local"
             - name: PGDATABASE
               value: "sentinel"
             - name: PGUSER
