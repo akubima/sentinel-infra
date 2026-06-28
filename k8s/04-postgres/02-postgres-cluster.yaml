@@ -159,7 +159,8 @@ spec:
     storageClass: longhorn-retained
   backup:
     barmanObjectStore:
-      destinationPath: "s3://sentinel-backup-905418361269-us-west-2-an/postgres-backup"
+      destinationPath: "s3://sentinel-backup/postgres-backup"
+      endpointURL: "https://8fd3a8bac18f64c818192a904d267c76.r2.cloudflarestorage.com"
       s3Credentials:
         accessKeyId:
           name: postgres-backup-s3-creds
