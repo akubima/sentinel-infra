@@ -5,9 +5,9 @@
 [![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescaledb&logoColor=white)](https://www.timescale.com)
 [![Vault](https://img.shields.io/badge/vault-1.15+-000000.svg?style=flat&logo=hashicorp&logoColor=white)](https://www.vaultproject.io)
 
-This repository defines the mission-critical telemetry ingestion ground segment for the Sentinel array. It hosts the declarative Kubernetes manifests and hardware-in-the-loop bootstrap procedures required to stand up an ultra-reliable, fail-safe processing pipeline. 
+This repository defines the mission-critical telemetry ingestion ground segment for the Sentinel array. It hosts the declarative Kubernetes manifests and hardware-in-the-loop bootstrap procedures required to stand up an ultra-reliable, fail-safe processing pipeline.
 
-The stack is designed for maximum uptime, high-frequency ingestion, and absolute data integrity. It provisions Longhorn replicated block storage, MetalLB bare-metal networking, Vault-backed secure secret stores, a CloudNativePG PostgreSQL database cluster optimized with TimescaleDB/PostGIS, an in-cluster private container registry, Grafana monitoring consoles, an AWS IoT bridge for hardware telemetry ingestion, and Cloudflare Tunnel ingress for secure remote control.
+The stack is designed for maximum uptime, high-frequency ingestion, and absolute data integrity. It provisions Longhorn block storage, MetalLB bare-metal networking, Vault-backed secret stores, a CloudNativePG PostgreSQL cluster optimized with TimescaleDB/PostGIS, Barman Cloud Plugin backups to Cloudflare R2, an in-cluster private container registry, Grafana monitoring consoles, an AWS IoT bridge for hardware telemetry ingestion, Hadoop/Spark batch analytics, and Cloudflare Tunnel ingress for secure remote control.
 
 Refer to this document as the launch checklist. For raw automation commands, see [etc/deployment-reference.sh](etc/deployment-reference.sh).
 
@@ -73,7 +73,7 @@ Every directory in this repository is flight-certified and organized by dependen
     |-- 01-longhorn/                  # Distributed replicated StorageClass and services
     |-- 02-metal-lb/                  # Local LoadBalancer pool for bare-metal operations
     |-- 03-vault/                     # Vault secrets container, cert issuers, SecretStores
-    |-- 04-postgres/                  # ExternalSecrets and CloudNativePG cluster definition
+    |-- 04-postgres/                  # ExternalSecrets, CNPG cluster, R2 ObjectStore, schedules
     |-- 05-registry/                  # In-cluster flight registry (NodePort 30500)
     |-- 06-grafana/                   # Real-time monitoring dashboard and services
     |-- 07-bridge-service/            # Ingestion bridge deployment, secrets, and routes
@@ -102,6 +102,7 @@ Host nodes must be standardized on Ubuntu or Debian Linux with `kubeadm`. All ha
 *   **Secrets Sync:** External Secrets Operator
 *   **Certificates:** cert-manager
 *   **Database Operator:** CloudNativePG
+*   **Database Backup Plugin:** Barman Cloud Plugin for CloudNativePG
 *   **Automated Config Reload:** Stakater Reloader (automatic pod updates and secret rotation)
 *   **Metrics:** Metrics Server
 *   **Engine:** Docker (or compatible daemon) on the image builder host
@@ -275,6 +276,13 @@ curl -sSfL https://github.com/cloudnative-pg/cloudnative-pg/raw/main/hack/instal
   | sudo sh -s -- -b /usr/local/bin
 ```
 
+Install the Barman Cloud Plugin in the same namespace as the CNPG operator. This is required by `k8s/04-postgres/04-postgres-objectstore.yaml` and replaces CNPG's deprecated in-tree `barmanObjectStore` backup path.
+
+```bash
+kubectl apply -f https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.13.0/manifest.yaml
+kubectl rollout status deployment/barman-cloud -n cnpg-system --timeout=300s
+```
+
 ### 10. Automated Config & Secret Hot-Reloading (Stakater Reloader)
 To enable zero-downtime pod rollouts immediately when Vault secrets rotate:
 ```bash
@@ -311,13 +319,15 @@ Required secret structures in Vault path `sentinel-kv`:
 | `prod/grafana` | `smtp_user`, `smtp_password` |
 | `prod/bridge` | `api_key`, `cert`, `key`, `ca` |
 | `prod/cloudflared` | `token` |
-| `prod/s3backup` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `S3_BUCKET` |
+| `prod/s3backup` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `S3_BUCKET`, `S3_ENDPOINT_URL` |
 
 *Security Warning:* Convert AWS IoT client certificates with escaped newlines (`\n`) in Vault values. The ingestion bridge parses these dynamically into valid PEM formats at startup.
 
 ---
 
 ## Stage 3: Launch Sequence (Deploy Stack)
+
+Before applying `k8s/04-postgres/`, confirm the Barman Cloud Plugin rollout is complete. The Postgres `Cluster` references plugin name `barman-cloud.cloudnative-pg.io`; applying the cluster before the plugin exists will leave backup archiving unavailable.
 
 ### 1. Provision Namespaces
 ```bash
@@ -495,15 +505,18 @@ The DB cluster manages granular authorization scopes under CNPG:
 
 All configuration values and state information must have a clear recovery path. We do not rely on "hope" as a recovery strategy. During an emergency backup execution, the jobs fallback to cached Kubernetes secret tokens if connectivity to the Vault cluster is degraded.
 
-### 1. Target Storage (S3 Configurations)
-Store your backup targets in Vault configuration before run:
+### 1. Target Storage (Cloudflare R2 via S3 API)
+Backups use Cloudflare R2 through the S3-compatible API. Store the target configuration in Vault before launching backup workloads:
 
 | Vault Path | Key | Value |
 | --- | --- | --- |
 | `sentinel-kv/prod/s3backup` | `AWS_ACCESS_KEY_ID` | `<YOUR_ACCESS_KEY>` |
 | `sentinel-kv/prod/s3backup` | `AWS_SECRET_ACCESS_KEY` | `<YOUR_SECRET_KEY>` |
 | `sentinel-kv/prod/s3backup` | `AWS_DEFAULT_REGION` | `ap-southeast-1` |
-| `sentinel-kv/prod/s3backup` | `S3_BUCKET` | `sentinel-backup-905418361269-us-west-2-an` |
+| `sentinel-kv/prod/s3backup` | `S3_BUCKET` | `sentinel-backup` |
+| `sentinel-kv/prod/s3backup` | `S3_ENDPOINT_URL` | `https://<account-id>.r2.cloudflarestorage.com` |
+
+The Vault backup CronJob reads both `S3_BUCKET` and `S3_ENDPOINT_URL` from the synced Kubernetes secret. The Postgres ObjectStore currently keeps the R2 destination and endpoint in `k8s/04-postgres/04-postgres-objectstore.yaml`, because CNPG plugin resources do not interpolate values from Kubernetes Secrets for those fields.
 
 ### 2. Vault Snapshot Routine
 A daily Kubernetes CronJob takes cold Raft snapshot copies, grabs encrypt/decrypt keys, and uploads them to the target storage folder.
@@ -515,18 +528,39 @@ A daily Kubernetes CronJob takes cold Raft snapshot copies, grabs encrypt/decryp
     kubectl logs -n vault -l job-name=vault-backup-test --follow
     ```
 
-### 3. Database Cluster Snapshot (CNPG/Barman)
-CloudNativePG natively handles backups via Barman engine pipelines.
+### 3. Database Cluster Backup (CNPG Barman Cloud Plugin)
+CloudNativePG delegates PostgreSQL base backups and WAL archiving to the Barman Cloud Plugin. The plugin is configured by `ObjectStore/postgres-r2` and referenced from `Cluster/postgres` through `spec.plugins`.
 *   **Execution Time:** Daily at 02:00 AM (`0 0 2 * * *`)
-*   **Destination Path:** `s3://[S3_BUCKET]/postgres-backup/`
+*   **Destination Path:** `s3://sentinel-backup/postgres-backup/`
+*   **Retention Policy:** `30d`, configured on `ObjectStore/postgres-r2`
 *   **Check Integrity Status:**
     ```bash
-    kubectl get cluster postgres -n sentinel-infra -o jsonpath='{.status.conditions}'
+    kubectl get cluster postgres -n sentinel-infra
+    kubectl get objectstore postgres-r2 -n sentinel-infra
     ```
 *   **Trigger On-Demand Backup:**
-    ```bash
-    kubectl cnpg backup postgres -n sentinel-infra
+    ```yaml
+    apiVersion: postgresql.cnpg.io/v1
+    kind: Backup
+    metadata:
+      name: postgres-r2-manual-backup
+      namespace: sentinel-infra
+    spec:
+      cluster:
+        name: postgres
+      method: plugin
+      pluginConfiguration:
+        name: barman-cloud.cloudnative-pg.io
     ```
+
+Apply the manifest and verify completion:
+
+```bash
+kubectl apply -f postgres-r2-manual-backup.yaml
+kubectl get backups.postgresql.cnpg.io postgres-r2-manual-backup -n sentinel-infra -w
+```
+
+Do not reintroduce `spec.backup.barmanObjectStore`; CNPG deprecates the native Barman integration and removes it in newer releases. Use `ObjectStore` plus `method: plugin` for all new backups.
 
 ### 4. System Re-Instantiation Flow (Disaster Recovery)
 
@@ -572,6 +606,16 @@ kubectl rollout restart deployment/bridge -n sentinel-infra
 kubectl rollout restart deployment/cloudflared -n sentinel-infra
 kubectl rollout restart deployment/sentinel-app -n sentinel-infra
 ```
+
+### Single-Node Capacity Guardrails
+This stack can run on one control-plane node, but memory requests must stay below allocatable memory or rollouts will block with `Insufficient memory`. Current single-node tuning intentionally keeps Longhorn, Vault, Postgres, and Hadoop conservative:
+*   Postgres runs as one CNPG instance with a Barman Cloud sidecar.
+*   Hadoop DataNodes request `256Mi` each and retain a `1Gi` limit for burst capacity.
+*   If a rollout stalls, inspect scheduler pressure before deleting pods:
+    ```bash
+    kubectl describe node sentinel-0
+    kubectl describe pod <pod-name> -n sentinel-infra
+    ```
 
 ### Storage Mount & Block Lock Debugging
 If a node experiences storage lockouts (Longhorn mount block issues):

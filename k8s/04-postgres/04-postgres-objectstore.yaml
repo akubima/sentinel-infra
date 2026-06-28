@@ -1,0 +1,30 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres-r2
+  namespace: sentinel-infra
+spec:
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: "s3://sentinel-backup/postgres-backup"
+    endpointURL: "https://8fd3a8bac18f64c818192a904d267c76.r2.cloudflarestorage.com"
+    s3Credentials:
+      accessKeyId:
+        name: postgres-backup-s3-creds
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: postgres-backup-s3-creds
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+      immediateCheckpoint: true
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi

@@ -92,9 +92,13 @@ data:
     echo "Snapshot captured successfully: $SNAP_SIZE"
     echo "[4/4] Uploading to S3..."
     S3_PATH="s3://${S3_BUCKET}/${S3_PREFIX}/${TIMESTAMP}"
-    aws s3 cp "$KEYS_FILE"  "${S3_PATH}/vault-keys-${TIMESTAMP}.txt"
+    AWS_ENDPOINT_ARGS=""
+    if [ -n "${S3_ENDPOINT_URL:-}" ]; then
+      AWS_ENDPOINT_ARGS="--endpoint-url ${S3_ENDPOINT_URL}"
+    fi
+    aws s3 cp "$KEYS_FILE"  "${S3_PATH}/vault-keys-${TIMESTAMP}.txt" $AWS_ENDPOINT_ARGS
     echo "Unseal keys file uploaded."
-    aws s3 cp "$SNAP_FILE"  "${S3_PATH}/vault-snapshot-${TIMESTAMP}.snap"
+    aws s3 cp "$SNAP_FILE"  "${S3_PATH}/vault-snapshot-${TIMESTAMP}.snap" $AWS_ENDPOINT_ARGS
     echo "Snapshot uploaded."
     rm -rf "$BACKUP_DIR"
     echo "Local temporary files cleaned up."
