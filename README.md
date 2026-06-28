@@ -359,7 +359,7 @@ sudo docker push localhost:30500/bridge-service:1.0.0
 ```
 
 ### 4. Compile and Push Spark ETL Image
-The Spark telemetry exporter processes batch historical telemetry on a scheduled cron. In local mode (`local[*]`), it uses JDBC drivers (`/opt/spark/jars/postgresql-42.7.2.jar`) to query telemetry data updated within the last hour (`NOW() - INTERVAL '1 hour'`) and writes them directly to the HDFS raw analytics path (`hdfs://hadoop-service:9000/user/sentinel/telemetry`) in compressed columnar Parquet format, partitioned by date (`partition_date`) and sorted by database identifier (`id`) within each partition.
+The Spark telemetry exporter processes daily historical telemetry summaries on a scheduled cron. In local mode (`local[*]`), it uses JDBC drivers (`/opt/spark/jars/postgresql-42.7.2.jar`) to query the previous complete UTC day, aggregate telemetry per device, and write compressed Parquet summaries to the HDFS analytics path (`hdfs://hadoop-service:9000/user/sentinel/telemetry_daily`). Output is partitioned by UTC date (`day_utc`) to preserve regulatory timekeeping requirements.
 
 Build the analytics pipeline image:
 ```bash

@@ -4,7 +4,8 @@ metadata:
   name: spark-telemetry-etl
   namespace: sentinel-infra
 spec:
-  schedule: "0 * * * *" # Runs every hour at minute 0
+  schedule: "15 0 * * *" # Runs daily at 00:15 UTC after the previous UTC day is complete
+  timeZone: "Etc/UTC"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -34,6 +35,8 @@ spec:
                   value: "postgres-rw.sentinel-infra.svc.cluster.local"
                 - name: PGDATABASE
                   value: "sentinel"
+                - name: DAILY_HDFS_PATH
+                  value: "hdfs://hadoop-service:9000/user/sentinel/telemetry_daily"
                 - name: PGUSER
                   valueFrom:
                     secretKeyRef:
