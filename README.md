@@ -636,19 +636,6 @@ This stack can run on one control-plane node, but memory requests must stay belo
     kubectl describe pod <pod-name> -n sentinel-infra
     ```
 
-#### Dynamic-RAM VM capacity verification
-The dynamic-memory kubelet startup guard must be installed during Stage 1 before `kubeadm init`. After boot or kubelet restart, verify that Kubernetes sees the full VM memory rather than the initial low dynamic-allocation value:
-
-```bash
-kubectl get node sentinel-0 -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
-```
-
-Inspect both kubelet and the temporary pressure holder when validating the guard:
-
-```bash
-journalctl -u kubelet -u kubelet-memory-pressure -b --no-pager | grep -E 'Waiting for VM memory|holder:|guard:|Target memory reached'
-```
-
 ### Storage Mount & Block Lock Debugging
 If a node experiences storage lockouts (Longhorn mount block issues):
 ```bash
