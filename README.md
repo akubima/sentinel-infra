@@ -2,7 +2,7 @@
 
 [![Kubernetes](https://img.shields.io/badge/kubernetes-v1.33+-326ce5.svg?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-17-4169e1.svg?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org)
-[![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescaledb&logoColor=white)](https://www.timescale.com)
+[![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescale&logoColor=white)](https://www.timescale.com)
 [![Vault](https://img.shields.io/badge/vault-1.15+-000000.svg?style=flat&logo=hashicorp&logoColor=white)](https://www.vaultproject.io)
 
 This repository defines the mission-critical telemetry ingestion ground segment for the Sentinel array. It hosts the declarative Kubernetes manifests and hardware-in-the-loop bootstrap procedures required to stand up an ultra-reliable, fail-safe processing pipeline.
@@ -616,6 +616,69 @@ This stack can run on one control-plane node, but memory requests must stay belo
     kubectl describe node sentinel-0
     kubectl describe pod <pod-name> -n sentinel-infra
     ```
+
+#### Dynamic-RAM VM kubelet startup guard
+On hosts that use dynamic memory allocation, kubelet can start while the VM still exposes a small initial RAM size. Kubernetes then records a low node capacity until kubelet is restarted. Install this pre-start guard so kubelet waits for the VM to expose at least 10 GiB before registering node capacity.
+
+```bash
+sudo tee /usr/local/sbin/kubelet-wait-memory.py >/dev/null <<'PY'
+#!/usr/bin/env python3
+import time
+
+TARGET_KB = 10 * 1024 * 1024
+CHUNK_MB = 256
+MAX_ALLOC_GB = 9
+SLEEP = 1
+
+
+def memtotal_kb():
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemTotal:"):
+                return int(line.split()[1])
+    raise RuntimeError("MemTotal not found")
+
+
+print("Waiting for VM memory to reach at least 10 GiB before starting kubelet...")
+chunks = []
+allocated_mb = 0
+
+while memtotal_kb() < TARGET_KB and allocated_mb < MAX_ALLOC_GB * 1024:
+    try:
+        block = bytearray(CHUNK_MB * 1024 * 1024)
+        for i in range(0, len(block), 4096):
+            block[i] = 1
+        chunks.append(block)
+        allocated_mb += CHUNK_MB
+        print(f"MemTotal={memtotal_kb()} kB, allocated={allocated_mb} MiB")
+    except MemoryError:
+        print("MemoryError during memory warm-up; waiting before retry...")
+    time.sleep(SLEEP)
+
+print(f"Final MemTotal={memtotal_kb()} kB. Releasing warm-up memory.")
+chunks.clear()
+time.sleep(3)
+PY
+
+sudo chmod +x /usr/local/sbin/kubelet-wait-memory.py
+
+sudo mkdir -p /etc/systemd/system/kubelet.service.d
+sudo tee /etc/systemd/system/kubelet.service.d/20-wait-memory.conf >/dev/null <<'EOF'
+[Service]
+ExecStartPre=/usr/local/sbin/kubelet-wait-memory.py
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+sleep 20
+kubectl get node sentinel-0 -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
+```
+
+Expected output after a successful restart should show Kubernetes capacity close to the VM's real `MemTotal`, for example `12634724Ki` capacity instead of an initial low value such as `1946212Ki`. If the value is still low, inspect the hook output with:
+
+```bash
+journalctl -u kubelet -b --no-pager | grep -A3 -B3 'Waiting for VM memory'
+```
 
 ### Storage Mount & Block Lock Debugging
 If a node experiences storage lockouts (Longhorn mount block issues):
