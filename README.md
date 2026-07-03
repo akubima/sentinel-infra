@@ -13,6 +13,32 @@ Refer to this document as the launch checklist. For raw automation commands, see
 
 ---
 
+## Table of Contents
+
+- [Mission Control Architecture](#mission-control-architecture)
+- [Repository Blueprint](#repository-blueprint)
+- [Pre-Flight Checklists & Requirements](#pre-flight-checklists--requirements)
+- [Stage 1: Ground System Bootstrap (Bare-Metal)](#stage-1-ground-system-bootstrap-bare-metal)
+  - [1. Hardening the Operating System](#1-hardening-the-operating-system)
+  - [2. Container Runtime Provisioning (containerd)](#2-container-runtime-provisioning-containerd)
+  - [3. Kubernetes Control Plane Setup](#3-kubernetes-control-plane-setup)
+  - [4. CNI Layer (Flannel)](#4-cni-layer-flannel)
+  - [5. Redundant Storage Engine (Longhorn)](#5-redundant-storage-engine-longhorn)
+  - [6. Bare-Metal Load Balancing (MetalLB)](#6-bare-metal-load-balancing-metallb)
+  - [7. External Secrets Operator](#7-external-secrets-operator)
+  - [8. Certificate Manager](#8-certificate-manager)
+  - [9. Database Operator (CloudNativePG)](#9-database-operator-cloudnativepg)
+  - [10. Automated Config & Secret Hot-Reloading (Stakater Reloader)](#10-automated-config--secret-hot-reloading-stakater-reloader)
+  - [11. Metrics Server (Telemetry Monitoring)](#11-metrics-server-telemetry-monitoring)
+- [Stage 2: Cryptographic Containment (Vault Secrets)](#stage-2-cryptographic-containment-vault-secrets)
+- [Stage 3: Launch Sequence (Deploy Stack)](#stage-3-launch-sequence-deploy-stack)
+- [Telemetry Schema & Database Engineering](#telemetry-schema--database-engineering)
+- [Fail-Safe: Backup, Recovery & Anomaly Resolution](#fail-safe-backup-recovery--anomaly-resolution)
+- [Flight Operations & Diagnostics](#flight-operations--diagnostics)
+- [Telemetry Integrity & Payload Protection](#telemetry-integrity--payload-protection)
+
+---
+
 ## Mission Control Architecture
 
 The system telemetry flow is structured to prevent packet loss under off-nominal conditions:
@@ -179,18 +205,11 @@ echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 sudo apt update
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
-
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-sudo kubeadm config images pull
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-kubectl get nodes
 ```
+
+If the control plane runs inside a VM with dynamic memory allocation and the hypervisor is not directly manageable, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`.
+
+Use the validated guard in [docs/kubelet-dynamic-memory-guard.md](docs/kubelet-dynamic-memory-guard.md). It uses a temporary memory-pressure holder plus warm-up swap, waits for at least 10 GiB, starts kubelet while memory is expanded, then stops the holder and disables swap after kubelet has registered node capacity.
 
 **Worker Nodes Node Insertion:** Use the bootstrap join command printed during control plane init. To generate a fresh token:
 ```bash
@@ -616,6 +635,19 @@ This stack can run on one control-plane node, but memory requests must stay belo
     kubectl describe node sentinel-0
     kubectl describe pod <pod-name> -n sentinel-infra
     ```
+
+#### Dynamic-RAM VM capacity verification
+The dynamic-memory kubelet startup guard must be installed during Stage 1 before `kubeadm init`. After boot or kubelet restart, verify that Kubernetes sees the full VM memory rather than the initial low dynamic-allocation value:
+
+```bash
+kubectl get node sentinel-0 -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
+```
+
+Inspect both kubelet and the temporary pressure holder when validating the guard:
+
+```bash
+journalctl -u kubelet -u kubelet-memory-pressure -b --no-pager | grep -E 'Waiting for VM memory|holder:|guard:|Target memory reached'
+```
 
 ### Storage Mount & Block Lock Debugging
 If a node experiences storage lockouts (Longhorn mount block issues):
