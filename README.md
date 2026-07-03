@@ -2,7 +2,7 @@
 
 [![Kubernetes](https://img.shields.io/badge/kubernetes-v1.33+-326ce5.svg?style=flat&logo=kubernetes&logoColor=white)](https://kubernetes.io)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-17-4169e1.svg?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org)
-[![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescale&logoColor=white)](https://www.timescale.com)
+[![TimescaleDB](https://img.shields.io/badge/timescaledb-3.5-f15a24.svg?style=flat&logo=timescaledb&logoColor=white)](https://www.timescale.com)
 [![Vault](https://img.shields.io/badge/vault-1.15+-000000.svg?style=flat&logo=hashicorp&logoColor=white)](https://www.vaultproject.io)
 
 This repository defines the mission-critical telemetry ingestion ground segment for the Sentinel array. It hosts the declarative Kubernetes manifests and hardware-in-the-loop bootstrap procedures required to stand up an ultra-reliable, fail-safe processing pipeline.
@@ -10,6 +10,32 @@ This repository defines the mission-critical telemetry ingestion ground segment 
 The stack is designed for maximum uptime, high-frequency ingestion, and absolute data integrity. It provisions Longhorn block storage, MetalLB bare-metal networking, Vault-backed secret stores, a CloudNativePG PostgreSQL cluster optimized with TimescaleDB/PostGIS, Barman Cloud Plugin backups to Cloudflare R2, an in-cluster private container registry, Grafana monitoring consoles, an AWS IoT bridge for hardware telemetry ingestion, Hadoop/Spark batch analytics, and Cloudflare Tunnel ingress for secure remote control.
 
 Refer to this document as the launch checklist. For raw automation commands, see [etc/deployment-reference.sh](etc/deployment-reference.sh).
+
+---
+
+## Table of Contents
+
+- [Mission Control Architecture](#mission-control-architecture)
+- [Repository Blueprint](#repository-blueprint)
+- [Pre-Flight Checklists & Requirements](#pre-flight-checklists--requirements)
+- [Stage 1: Ground System Bootstrap (Bare-Metal)](#stage-1-ground-system-bootstrap-bare-metal)
+  - [1. Hardening the Operating System](#1-hardening-the-operating-system)
+  - [2. Container Runtime Provisioning (containerd)](#2-container-runtime-provisioning-containerd)
+  - [3. Kubernetes Control Plane Setup](#3-kubernetes-control-plane-setup)
+  - [4. CNI Layer (Flannel)](#4-cni-layer-flannel)
+  - [5. Redundant Storage Engine (Longhorn)](#5-redundant-storage-engine-longhorn)
+  - [6. Bare-Metal Load Balancing (MetalLB)](#6-bare-metal-load-balancing-metallb)
+  - [7. External Secrets Operator](#7-external-secrets-operator)
+  - [8. Certificate Manager](#8-certificate-manager)
+  - [9. Database Operator (CloudNativePG)](#9-database-operator-cloudnativepg)
+  - [10. Automated Config & Secret Hot-Reloading (Stakater Reloader)](#10-automated-config--secret-hot-reloading-stakater-reloader)
+  - [11. Metrics Server (Telemetry Monitoring)](#11-metrics-server-telemetry-monitoring)
+- [Stage 2: Cryptographic Containment (Vault Secrets)](#stage-2-cryptographic-containment-vault-secrets)
+- [Stage 3: Launch Sequence (Deploy Stack)](#stage-3-launch-sequence-deploy-stack)
+- [Telemetry Schema & Database Engineering](#telemetry-schema--database-engineering)
+- [Fail-Safe: Backup, Recovery & Anomaly Resolution](#fail-safe-backup-recovery--anomaly-resolution)
+- [Flight Operations & Diagnostics](#flight-operations--diagnostics)
+- [Telemetry Integrity & Payload Protection](#telemetry-integrity--payload-protection)
 
 ---
 
@@ -179,7 +205,64 @@ echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 sudo apt update
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
+```
 
+If the control plane runs inside a VM with dynamic memory allocation, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`. This prevents kubelet from registering the node while the VM still exposes a low initial memory value.
+
+```bash
+sudo tee /usr/local/sbin/kubelet-wait-memory.py >/dev/null <<'PY'
+#!/usr/bin/env python3
+import time
+
+TARGET_KB = 10 * 1024 * 1024
+CHUNK_MB = 256
+MAX_ALLOC_GB = 9
+SLEEP = 1
+
+
+def memtotal_kb():
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemTotal:"):
+                return int(line.split()[1])
+    raise RuntimeError("MemTotal not found")
+
+
+print("Waiting for VM memory to reach at least 10 GiB before starting kubelet...")
+chunks = []
+allocated_mb = 0
+
+while memtotal_kb() < TARGET_KB and allocated_mb < MAX_ALLOC_GB * 1024:
+    try:
+        block = bytearray(CHUNK_MB * 1024 * 1024)
+        for i in range(0, len(block), 4096):
+            block[i] = 1
+        chunks.append(block)
+        allocated_mb += CHUNK_MB
+        print(f"MemTotal={memtotal_kb()} kB, allocated={allocated_mb} MiB")
+    except MemoryError:
+        print("MemoryError during memory warm-up; waiting before retry...")
+    time.sleep(SLEEP)
+
+print(f"Final MemTotal={memtotal_kb()} kB. Releasing warm-up memory.")
+chunks.clear()
+time.sleep(3)
+PY
+
+sudo chmod +x /usr/local/sbin/kubelet-wait-memory.py
+
+sudo mkdir -p /etc/systemd/system/kubelet.service.d
+sudo tee /etc/systemd/system/kubelet.service.d/20-wait-memory.conf >/dev/null <<'EOF'
+[Service]
+ExecStartPre=/usr/local/sbin/kubelet-wait-memory.py
+EOF
+
+sudo systemctl daemon-reload
+```
+
+Continue with control-plane initialization:
+
+```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 sudo kubeadm config images pull
@@ -190,6 +273,7 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 kubectl get nodes
+kubectl get node $(hostname) -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
 ```
 
 **Worker Nodes Node Insertion:** Use the bootstrap join command printed during control plane init. To generate a fresh token:
@@ -617,64 +701,14 @@ This stack can run on one control-plane node, but memory requests must stay belo
     kubectl describe pod <pod-name> -n sentinel-infra
     ```
 
-#### Dynamic-RAM VM kubelet startup guard
-On hosts that use dynamic memory allocation, kubelet can start while the VM still exposes a small initial RAM size. Kubernetes then records a low node capacity until kubelet is restarted. Install this pre-start guard so kubelet waits for the VM to expose at least 10 GiB before registering node capacity.
+#### Dynamic-RAM VM capacity verification
+The dynamic-memory kubelet startup guard must be installed during Stage 1 before `kubeadm init`. After boot or kubelet restart, verify that Kubernetes sees the full VM memory rather than the initial low dynamic-allocation value:
 
 ```bash
-sudo tee /usr/local/sbin/kubelet-wait-memory.py >/dev/null <<'PY'
-#!/usr/bin/env python3
-import time
-
-TARGET_KB = 10 * 1024 * 1024
-CHUNK_MB = 256
-MAX_ALLOC_GB = 9
-SLEEP = 1
-
-
-def memtotal_kb():
-    with open("/proc/meminfo") as f:
-        for line in f:
-            if line.startswith("MemTotal:"):
-                return int(line.split()[1])
-    raise RuntimeError("MemTotal not found")
-
-
-print("Waiting for VM memory to reach at least 10 GiB before starting kubelet...")
-chunks = []
-allocated_mb = 0
-
-while memtotal_kb() < TARGET_KB and allocated_mb < MAX_ALLOC_GB * 1024:
-    try:
-        block = bytearray(CHUNK_MB * 1024 * 1024)
-        for i in range(0, len(block), 4096):
-            block[i] = 1
-        chunks.append(block)
-        allocated_mb += CHUNK_MB
-        print(f"MemTotal={memtotal_kb()} kB, allocated={allocated_mb} MiB")
-    except MemoryError:
-        print("MemoryError during memory warm-up; waiting before retry...")
-    time.sleep(SLEEP)
-
-print(f"Final MemTotal={memtotal_kb()} kB. Releasing warm-up memory.")
-chunks.clear()
-time.sleep(3)
-PY
-
-sudo chmod +x /usr/local/sbin/kubelet-wait-memory.py
-
-sudo mkdir -p /etc/systemd/system/kubelet.service.d
-sudo tee /etc/systemd/system/kubelet.service.d/20-wait-memory.conf >/dev/null <<'EOF'
-[Service]
-ExecStartPre=/usr/local/sbin/kubelet-wait-memory.py
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl restart kubelet
-sleep 20
 kubectl get node sentinel-0 -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
 ```
 
-Expected output after a successful restart should show Kubernetes capacity close to the VM's real `MemTotal`, for example `12634724Ki` capacity instead of an initial low value such as `1946212Ki`. If the value is still low, inspect the hook output with:
+If the capacity is unexpectedly low, inspect the kubelet pre-start hook:
 
 ```bash
 journalctl -u kubelet -b --no-pager | grep -A3 -B3 'Waiting for VM memory'
