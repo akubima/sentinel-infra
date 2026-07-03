@@ -207,57 +207,145 @@ sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 ```
 
-If the control plane runs inside a VM with dynamic memory allocation, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`. This prevents kubelet from registering the node while the VM still exposes a low initial memory value.
+If the control plane runs inside a VM with dynamic memory allocation and the hypervisor is not directly manageable, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`. The guard starts a temporary memory-pressure holder before kubelet, waits until the guest exposes at least 10 GiB, lets kubelet register the node while RAM is still expanded, then stops the holder.
 
 ```bash
-sudo tee /usr/local/sbin/kubelet-wait-memory.py >/dev/null <<'PY'
+sudo tee /usr/local/sbin/memory-pressure-holder.py >/dev/null <<'PY'
 #!/usr/bin/env python3
 import time
 
 TARGET_KB = 10 * 1024 * 1024
-CHUNK_MB = 256
-MAX_ALLOC_GB = 9
-SLEEP = 1
+CHUNK_MB = 1024
+MAX_ALLOC_MB = 12 * 1024
 
 
-def memtotal_kb():
+def meminfo():
+    data = {}
     with open("/proc/meminfo") as f:
         for line in f:
-            if line.startswith("MemTotal:"):
-                return int(line.split()[1])
-    raise RuntimeError("MemTotal not found")
+            key, value = line.split(":", 1)
+            data[key] = int(value.strip().split()[0])
+    return data
 
 
-print("Waiting for VM memory to reach at least 10 GiB before starting kubelet...")
+def log(message):
+    print(message, flush=True)
+
+
+try:
+    with open("/proc/self/oom_score_adj", "w") as f:
+        f.write("1000")
+except Exception:
+    pass
+
+log("memory-pressure-holder: starting")
+
 chunks = []
 allocated_mb = 0
 
-while memtotal_kb() < TARGET_KB and allocated_mb < MAX_ALLOC_GB * 1024:
-    try:
-        block = bytearray(CHUNK_MB * 1024 * 1024)
-        for i in range(0, len(block), 4096):
-            block[i] = 1
-        chunks.append(block)
-        allocated_mb += CHUNK_MB
-        print(f"MemTotal={memtotal_kb()} kB, allocated={allocated_mb} MiB")
-    except MemoryError:
-        print("MemoryError during memory warm-up; waiting before retry...")
-    time.sleep(SLEEP)
+while allocated_mb < MAX_ALLOC_MB:
+    info = meminfo()
+    log(
+        f"holder: MemTotal={info['MemTotal']} kB, "
+        f"MemAvailable={info['MemAvailable']} kB, "
+        f"allocated={allocated_mb} MiB"
+    )
 
-print(f"Final MemTotal={memtotal_kb()} kB. Releasing warm-up memory.")
-chunks.clear()
-time.sleep(3)
+    if info["MemTotal"] >= TARGET_KB:
+        break
+
+    block = bytearray(CHUNK_MB * 1024 * 1024)
+
+    for i in range(0, len(block), 4096):
+        block[i] = 1
+
+    chunks.append(block)
+    allocated_mb += CHUNK_MB
+    time.sleep(0.05)
+
+log("holder: holding memory until kubelet starts")
+
+while True:
+    info = meminfo()
+    log(
+        f"holder: holding; MemTotal={info['MemTotal']} kB, "
+        f"MemAvailable={info['MemAvailable']} kB, "
+        f"allocated={allocated_mb} MiB"
+    )
+    time.sleep(5)
 PY
 
-sudo chmod +x /usr/local/sbin/kubelet-wait-memory.py
+sudo chmod +x /usr/local/sbin/memory-pressure-holder.py
+
+sudo tee /usr/local/sbin/kubelet-wait-memory.sh >/dev/null <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+TARGET_KB=$((10 * 1024 * 1024))
+
+memtotal_kb() {
+  awk '/^MemTotal:/ {print $2}' /proc/meminfo
+}
+
+memavailable_kb() {
+  awk '/^MemAvailable:/ {print $2}' /proc/meminfo
+}
+
+log() {
+  echo "$*"
+}
+
+log "Waiting for VM memory to reach at least 10 GiB before starting kubelet..."
+
+while true; do
+  total="$(memtotal_kb)"
+  available="$(memavailable_kb)"
+
+  log "guard: MemTotal=${total} kB, MemAvailable=${available} kB"
+
+  if [ "$total" -ge "$TARGET_KB" ]; then
+    log "Target memory reached. Starting kubelet."
+    exit 0
+  fi
+
+  sleep 1
+done
+SH
+
+sudo chmod +x /usr/local/sbin/kubelet-wait-memory.sh
+
+sudo tee /etc/systemd/system/kubelet-memory-pressure.service >/dev/null <<'EOF'
+[Unit]
+Description=Temporary memory pressure holder for kubelet dynamic RAM warm-up
+Before=kubelet.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/memory-pressure-holder.py
+Restart=on-failure
+RestartSec=1
+OOMScoreAdjust=1000
+OOMPolicy=continue
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
 sudo mkdir -p /etc/systemd/system/kubelet.service.d
 sudo tee /etc/systemd/system/kubelet.service.d/20-wait-memory.conf >/dev/null <<'EOF'
 [Service]
-ExecStartPre=/usr/local/sbin/kubelet-wait-memory.py
+OOMPolicy=continue
+TimeoutStartSec=300
+ExecStartPre=/bin/systemctl start kubelet-memory-pressure.service
+ExecStartPre=/usr/local/sbin/kubelet-wait-memory.sh
+ExecStartPost=/bin/sleep 15
+ExecStartPost=/bin/systemctl stop kubelet-memory-pressure.service
 EOF
 
 sudo systemctl daemon-reload
+sudo systemctl reset-failed kubelet || true
+sudo systemctl reset-failed kubelet-memory-pressure.service || true
 ```
 
 Continue with control-plane initialization:
@@ -708,10 +796,10 @@ The dynamic-memory kubelet startup guard must be installed during Stage 1 before
 kubectl get node sentinel-0 -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.memory,ALLOCATABLE:.status.allocatable.memory
 ```
 
-If the capacity is unexpectedly low, inspect the kubelet pre-start hook:
+Inspect both kubelet and the temporary pressure holder when validating the guard:
 
 ```bash
-journalctl -u kubelet -b --no-pager | grep -A3 -B3 'Waiting for VM memory'
+journalctl -u kubelet -u kubelet-memory-pressure -b --no-pager | grep -E 'Waiting for VM memory|holder:|guard:|Target memory reached'
 ```
 
 ### Storage Mount & Block Lock Debugging
