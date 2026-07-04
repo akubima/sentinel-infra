@@ -209,7 +209,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 
 If the control plane runs inside a VM with dynamic memory allocation and the hypervisor is not directly manageable, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`.
 
-Use the validated guard in [docs/kubelet-dynamic-memory-guard.md](docs/kubelet-dynamic-memory-guard.md). It uses a temporary memory-pressure holder plus warm-up swap, waits for at least 10 GiB, starts kubelet while memory is expanded, then stops the holder and disables swap after kubelet has registered node capacity.
+Use the guest-only brute-force guard in [docs/kubelet-dynamic-memory-guard.md](docs/kubelet-dynamic-memory-guard.md). It uses a temporary resident memory-pressure holder plus warm-up swap, waits for at least 10 GiB, starts kubelet while memory is expanded, then stops the holder and disables swap after kubelet has registered node capacity. Keep the guard documentation even when disabling it on a specific VM; it records the diagnostic path for Hyper-V Dynamic Memory environments where host access is unavailable.
 
 **Worker Nodes Node Insertion:** Use the bootstrap join command printed during control plane init. To generate a fresh token:
 ```bash
