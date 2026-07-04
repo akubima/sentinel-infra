@@ -1,6 +1,10 @@
 # Kubelet Dynamic-Memory Startup Guard
 
-Use this guard when the Kubernetes control plane runs inside a VM with dynamic memory allocation and the hypervisor is not directly manageable. It prevents kubelet from registering the node while the guest still exposes a low initial memory value.
+Archived diagnostic procedure for the previous kubeadm-based bootstrap path.
+
+The current repository default is K3s. Use K3s for constrained single-node VMs instead of this guard when Hyper-V Dynamic Memory does not hot-add RAM under sustained guest pressure. Keep this document as evidence of the guest-side approach that was tested and as a fallback reference for environments where the hypervisor actually honors memory pressure.
+
+Use this guard only when a kubeadm-based Kubernetes control plane runs inside a VM with dynamic memory allocation and the hypervisor is known to hot-add RAM from guest-side pressure. It prevents kubelet from registering the node while the guest still exposes a low initial memory value.
 
 The guest-only brute-force flow is:
 

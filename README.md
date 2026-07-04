@@ -20,9 +20,9 @@ Refer to this document as the launch checklist. For raw automation commands, see
 - [Pre-Flight Checklists & Requirements](#pre-flight-checklists--requirements)
 - [Stage 1: Ground System Bootstrap (Bare-Metal)](#stage-1-ground-system-bootstrap-bare-metal)
   - [1. Hardening the Operating System](#1-hardening-the-operating-system)
-  - [2. Container Runtime Provisioning (containerd)](#2-container-runtime-provisioning-containerd)
-  - [3. Kubernetes Control Plane Setup](#3-kubernetes-control-plane-setup)
-  - [4. CNI Layer (Flannel)](#4-cni-layer-flannel)
+  - [2. K3s Control Plane Setup](#2-k3s-control-plane-setup)
+  - [3. Local Registry Runtime Override](#3-local-registry-runtime-override)
+  - [4. CNI Layer](#4-cni-layer)
   - [5. Redundant Storage Engine (Longhorn)](#5-redundant-storage-engine-longhorn)
   - [6. Bare-Metal Load Balancing (MetalLB)](#6-bare-metal-load-balancing-metallb)
   - [7. External Secrets Operator](#7-external-secrets-operator)
@@ -116,15 +116,15 @@ Every directory in this repository is flight-certified and organized by dependen
 
 ## Pre-Flight Checklists & Requirements
 
-Host nodes must be standardized on Ubuntu or Debian Linux with `kubeadm`. All hardware must meet minimum compute and storage thresholds before launch.
+Host nodes must be standardized on Ubuntu or Debian Linux with K3s. K3s is the default Kubernetes distribution for this stack because it keeps the control plane small enough for constrained single-node VMs while preserving the normal Kubernetes API used by the manifests in `k8s/`.
 
 ### Required Flight Systems & Operators:
-*   **Orchestration:** Kubernetes v1.33+
-*   **Runtime:** containerd
+*   **Orchestration:** K3s Kubernetes distribution
+*   **Runtime:** K3s-managed containerd
 *   **Package Manager:** Helm v3
-*   **CNI:** Flannel (configured with pod CIDR `10.244.0.0/16`)
-*   **Storage:** Longhorn (distributed, replicated)
-*   **Networking:** MetalLB (if bare-metal ingress is required)
+*   **CNI:** K3s-managed Flannel
+*   **Storage:** Longhorn (distributed, replicated; optional on very small single-node VMs)
+*   **Networking:** MetalLB (if bare-metal LoadBalancer ingress is required)
 *   **Secrets Sync:** External Secrets Operator
 *   **Certificates:** cert-manager
 *   **Database Operator:** CloudNativePG
@@ -160,71 +160,58 @@ EOF
 sudo sysctl --system
 ```
 
-### 2. Container Runtime Provisioning (containerd)
-Install `containerd` and enable systemd cgroups wrapper. If deploying to localhost, configure registry overrides to allow local push/pull on port `30500`:
-
-```bash
-sudo apt install -y containerd
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-sudo ctr plugins ls | grep cri
-```
-
-For the local flight registry (NodePort `30500`), inject hosts.toml authentication override:
-
-```bash
-sudo mkdir -p /etc/containerd/certs.d/localhost:30500
-
-sudo tee /etc/containerd/certs.d/localhost:30500/hosts.toml <<EOF
-server = "http://localhost:30500"
-
-[host."http://localhost:30500"]
-  capabilities = ["pull", "resolve", "push"]
-  skip_verify = true
-EOF
-
-sudo systemctl restart containerd
-```
-
-### 3. Kubernetes Control Plane Setup
+### 2. K3s Control Plane Setup
 Execute this sequence on the primary control plane node:
 
 ```bash
-sudo apt install -y apt-transport-https ca-certificates curl gpg
-sudo mkdir -p /etc/apt/keyrings
+curl -sfL https://get.k3s.io | sh -s - server \
+  --disable traefik \
+  --disable servicelb \
+  --disable metrics-server
 
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key \
-  | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" \
-  | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-sudo apt update
-sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+mkdir -p ~/.kube
+sudo k3s kubectl config view --raw > ~/.kube/config
+chmod 600 ~/.kube/config
+kubectl get nodes
 ```
 
-If the control plane runs inside a VM with dynamic memory allocation and the hypervisor is not directly manageable, install the kubelet memory guard immediately after the Kubernetes packages are installed and before `kubeadm init`.
+K3s bundles kubelet, kube-proxy, Flannel, and containerd. Do not install `kubeadm`, a separate kubelet package, or a separate containerd runtime for the normal single-node path.
 
-Use the guest-only brute-force guard in [docs/kubelet-dynamic-memory-guard.md](docs/kubelet-dynamic-memory-guard.md). It uses a temporary resident memory-pressure holder plus warm-up swap, waits for at least 10 GiB, starts kubelet while memory is expanded, then stops the holder and disables swap after kubelet has registered node capacity. Keep the guard documentation even when disabling it on a specific VM; it records the diagnostic path for Hyper-V Dynamic Memory environments where host access is unavailable.
+If the control plane runs inside a Hyper-V VM with Dynamic Memory that does not hot-add RAM under sustained guest pressure, prefer K3s over the old kubelet memory warm-up path. The historical guard remains archived in [docs/kubelet-dynamic-memory-guard.md](docs/kubelet-dynamic-memory-guard.md) only as diagnostic background for environments where host access is unavailable.
 
 **Worker Nodes Node Insertion:** Use the bootstrap join command printed during control plane init. To generate a fresh token:
 ```bash
-kubeadm token create --print-join-command
+sudo cat /var/lib/rancher/k3s/server/node-token
+curl -sfL https://get.k3s.io | K3S_URL=https://<control-plane-ip>:6443 K3S_TOKEN=<node-token> sh -
 ```
 
-**Single-Node Dev Flight Configurations:** Untaint the control plane node to permit telemetry workload scheduling:
+**Single-Node Dev Flight Configurations:** K3s server nodes are schedulable by default. If a node was manually tainted, remove the taint before launching the telemetry workload:
 ```bash
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
-### 4. CNI Layer (Flannel)
+### 3. Local Registry Runtime Override
+K3s owns its containerd configuration. For the local flight registry (NodePort `30500`), configure the registry mirror through K3s and restart the service:
+
 ```bash
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+sudo mkdir -p /etc/rancher/k3s
+
+sudo tee /etc/rancher/k3s/registries.yaml <<EOF
+mirrors:
+  "localhost:30500":
+    endpoint:
+      - "http://localhost:30500"
+configs:
+  "localhost:30500":
+    tls:
+      insecure_skip_verify: true
+EOF
+
+sudo systemctl restart k3s
 ```
+
+### 4. CNI Layer
+K3s deploys Flannel automatically. No separate Flannel manifest is required unless K3s is installed with a custom CNI mode.
 
 ### 5. Redundant Storage Engine (Longhorn)
 Enable distributed storage primitives on each storage node:

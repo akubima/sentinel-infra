@@ -13,26 +13,29 @@ net.ipv4.ip_forward = 1
 EOF
 sudo sysctl --system
 
-# Install containerd
-sudo apt install -y containerd
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-sudo ctr plugins ls | grep cri
-# If using local registry add this
-sudo mkdir -p "/etc/containerd/certs.d/localhost:30500"
-sudo tee "/etc/containerd/certs.d/localhost:30500/hosts.toml" <<EOF
-server = "http://localhost:30500"
-
-[host."http://localhost:30500"]
-  capabilities = ["pull", "resolve", "push"]
-  skip_verify = true
+# K3s manages containerd internally. Configure the local registry mirror through K3s.
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/registries.yaml <<EOF
+mirrors:
+  "localhost:30500":
+    endpoint:
+      - "http://localhost:30500"
+configs:
+  "localhost:30500":
+    tls:
+      insecure_skip_verify: true
 EOF
-sudo sysctl --system
-sudo ctr plugins ls | grep cri
-# # Local runner example
+
+curl -sfL https://get.k3s.io | sh -s - server \
+  --disable traefik \
+  --disable servicelb \
+  --disable metrics-server
+mkdir -p "$HOME/.kube"
+sudo k3s kubectl config view --raw > "$HOME/.kube/config"
+chmod 600 "$HOME/.kube/config"
+kubectl get nodes
+
+# Local runner example
 sudo apt install docker.io -y
 # Build
 sudo docker build -t bridge-service:1.0.0  bridge-service/
@@ -56,23 +59,8 @@ sudo mkdir -p /root/.docker
 sudo cp ~/.docker/config.json /root/.docker/config.json
 # ========================
 
-sudo apt install -y apt-transport-https ca-certificates curl gpg
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update
-sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-kubeadm config images pull
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-kubectl get nodes
-
-# Install flannel CNI default podCIDR 10.244.0.0/16
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+# K3s includes Flannel by default. No separate Flannel manifest is required.
 
 # Longhorn if using multi-node cluster
 sudo apt install open-iscsi nfs-common -y
@@ -125,11 +113,11 @@ kubectl patch deployment metrics-server -n kube-system --type='json' -p='[
   }
 ]'
 
-# If want to use the control-plane also as worker run this to remove the trait
+# K3s server nodes are schedulable by default. If a node was manually tainted, remove it.
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
-# Create join command
-kubeadm token create --print-join-command
+# Show token for joining K3s worker nodes.
+sudo cat /var/lib/rancher/k3s/server/node-token
 
 #Longhorn volume mount error ============================
 # Cek apakah multipathd yang menahan
